@@ -3,11 +3,11 @@ import './index.css';
 import { context, requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { calculateDayNumber } from '../shared/prism-levels';
-import type { PrismInitResponse } from '../shared/prism-types';
+import { calculateDayNumber } from '../shared/tangle-engine';
+import type { TangleInitResponse } from '../shared/tangle-types';
 
 export const Splash = () => {
-  const [data, setData] = useState<PrismInitResponse | null>(null);
+  const [data, setData] = useState<TangleInitResponse | null>(null);
 
   const fallbackDay = calculateDayNumber();
 
@@ -16,11 +16,11 @@ export const Splash = () => {
       try {
         const res = await fetch('/api/init');
         if (res.ok) {
-          const json = (await res.json()) as PrismInitResponse;
+          const json = (await res.json()) as TangleInitResponse;
           setData(json);
         }
       } catch (err) {
-        console.error('Failed to load PRISM daily info:', err);
+        console.error('Failed to load Tangle info:', err);
       }
     }
     void loadInfo();
@@ -36,105 +36,43 @@ export const Splash = () => {
       year: 'numeric',
     });
 
-  const communityCrystals = data?.communityStats?.totalCrystalsAwakened ?? 14820;
-  const totalSolves = data?.communityStats?.totalSolves ?? 3840;
+  const totalSolved = data?.communityStats?.totalSolved ?? 3420;
   const streak = data?.userStats?.currentStreak ?? 0;
   const todayDone = data?.userStats?.todayCompleted ?? false;
 
   return (
-    <div className="prism-splash-container">
-      {/* Laser glow streams in background */}
-      <div className="laser-streak laser-red" />
-      <div className="laser-streak laser-green" />
-      <div className="laser-streak laser-blue" />
+    <div className="splash-container">
+      <div className="splash-card">
+        <span className="splash-badge">Daily Knot #{paddedDay} · {dateString}</span>
+        <h1 className="splash-title">Tangle</h1>
+        <p className="splash-desc">
+          Drag the pins to untangle the threads. Leave zero lines crossing.
+        </p>
 
-      <div className="splash-content">
-        {/* Top Header Badge */}
-        <header className="splash-header">
-          <div className="corridor-badge">
-            <span className="pulsing-beacon" />
-            <span>CHAMBER #{paddedDay} · {dateString.toUpperCase()}</span>
+        <div className="splash-stats">
+          <div>
+            <span className="splash-stat-num">{totalSolved.toLocaleString()}</span>
+            <span className="splash-stat-label">Untangled today</span>
           </div>
-
           {streak > 0 && (
-            <div className="streak-badge" title="Daily Optician Streak">
-              <span>🔥</span>
-              <span>{streak} DAY STREAK</span>
+            <div>
+              <span className="splash-stat-num">{streak} days</span>
+              <span className="splash-stat-label">Your streak</span>
             </div>
           )}
-        </header>
-
-        {/* Hero Title */}
-        <div className="splash-hero">
-          <div className="prism-hero-icon">
-            <span className="crystal-core">💎</span>
-            <div className="beam-ring" />
-          </div>
-
-          <h1 className="splash-title">PRISM</h1>
-          <p className="splash-subtitle">A DAILY OPTICAL SYNTHESIS PUZZLE</p>
-          <p className="splash-premise">
-            Bend light. Synthesize color. Awaken the ancient crystals.
-          </p>
         </div>
 
-        {/* 3 Step Visual Pills */}
-        <div className="rules-preview">
-          <div className="rule-pill">
-            <span className="rule-icon">🪞</span>
-            <div className="rule-text">
-              <strong>Aim the Mirrors</strong>
-              <small>Reflect beams 90°</small>
-            </div>
-          </div>
+        <button
+          className="primary-btn"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
+          autoFocus
+        >
+          {todayDone ? "Play again or practice" : "Untangle today's knot"}
+        </button>
 
-          <div className="rule-pill">
-            <span className="rule-icon">🟣</span>
-            <div className="rule-text">
-              <strong>Blend Colors</strong>
-              <small>R + B = Violet</small>
-            </div>
-          </div>
-
-          <div className="rule-pill">
-            <span className="rule-icon">💎</span>
-            <div className="rule-text">
-              <strong>Awaken Crystals</strong>
-              <small>Energize target gems</small>
-            </div>
-          </div>
+        <div style={{ marginTop: '16px', fontSize: '11px', color: '#637180' }}>
+          r/{context.subredditName ?? 'windward_daily_dev'}
         </div>
-
-        {/* Community Ledger */}
-        <div className="community-banner">
-          <div className="community-stat">
-            <span className="community-num">{communityCrystals.toLocaleString()}</span>
-            <span className="community-label">Crystals Awakened Today</span>
-          </div>
-          <div className="community-divider" />
-          <div className="community-stat">
-            <span className="community-num">{totalSolves.toLocaleString()}</span>
-            <span className="community-label">Chambers Solved</span>
-          </div>
-        </div>
-
-        {/* Call to action button */}
-        <div className="splash-cta-container">
-          <button
-            className="splash-play-btn"
-            onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
-            autoFocus
-          >
-            <span>{todayDone ? 'REPLAY OR PRACTICE ↗' : 'ENTER OPTICAL CHAMBER ↗'}</span>
-          </button>
-        </div>
-
-        {/* Footer */}
-        <footer className="splash-footer">
-          <span>{context.username ? `Optician: u/${context.username}` : 'Bite-sized daily puzzle'}</span>
-          <span>·</span>
-          <span>r/{context.subredditName ?? 'windward_daily_dev'}</span>
-        </footer>
       </div>
     </div>
   );

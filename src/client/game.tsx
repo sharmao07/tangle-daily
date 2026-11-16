@@ -5,64 +5,48 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'r
 import { createRoot } from 'react-dom/client';
 import {
   calculateDayNumber,
-  getChamberForDay,
-  simulateChamber,
-  type LightColor,
-  type OpticalPiece,
-  type PrismInitResponse,
-  type PrismLevel,
-  type SubmitPrismRequest,
-  type SubmitPrismResponse,
+  evaluateGraph,
+  getTangleLevelForDay,
+  type GraphNode,
+  type SubmitTangleRequest,
+  type SubmitTangleResponse,
+  type TangleInitResponse,
+  type TangleLevel,
 } from '../shared/api';
-import { prismSounds } from './prism-audio';
+import { tangleSounds } from './tangle-audio';
 
-const COLOR_HEX: Record<LightColor, string> = {
-  red: '#ff2e54',
-  green: '#00e676',
-  blue: '#2979ff',
-  yellow: '#ffd600',
-  magenta: '#f50057',
-  cyan: '#00e5ff',
-  white: '#ffffff',
-};
-
-const COLOR_GLOW: Record<LightColor, string> = {
-  red: 'rgba(255, 46, 84, 0.55)',
-  green: 'rgba(0, 230, 118, 0.55)',
-  blue: 'rgba(41, 121, 255, 0.55)',
-  yellow: 'rgba(255, 214, 0, 0.55)',
-  magenta: 'rgba(245, 0, 87, 0.55)',
-  cyan: 'rgba(0, 229, 255, 0.55)',
-  white: 'rgba(255, 255, 255, 0.75)',
-};
-
-export function PrismApp() {
+export function TangleApp() {
   const todayDayNumber = useMemo(() => calculateDayNumber(), []);
   const [currentDay, setCurrentDay] = useState<number>(todayDayNumber);
-  const [level, setLevel] = useState<PrismLevel>(() => getChamberForDay(todayDayNumber));
+  const [level, setLevel] = useState<TangleLevel>(() => getTangleLevelForDay(todayDayNumber));
 
-  // Pieces currently on the board or in inventory
-  const [pieces, setPieces] = useState<OpticalPiece[]>(() =>
-    level.availablePieces.map((p) => ({ ...p }))
-  );
-  const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
+  // Graph nodes
+  const [nodes, setNodes] = useState<GraphNode[]>(() => level.nodes.map((n) => ({ ...n })));
+  const [undoStack, setUndoStack] = useState<GraphNode[][]>([]);
   const [moveCount, setMoveCount] = useState<number>(0);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+
+  // Active interaction
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const previousCrossingsRef = useRef<number>(level.initialCrossings);
   const hasWonRef = useRef<boolean>(false);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   // Audio & Modals
-  const [isMuted, setIsMuted] = useState<boolean>(() => prismSounds.isMuted());
+  const [isMuted, setIsMuted] = useState<boolean>(() => tangleSounds.isMuted());
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Community & user stats
-  const [communityCrystals, setCommunityCrystals] = useState<number>(14820);
-  const [totalSolves, setTotalSolves] = useState<number>(3840);
+  const [totalSolved, setTotalSolved] = useState<number>(3420);
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [maxStreak, setMaxStreak] = useState<number>(0);
-  const [totalAwakened, setTotalAwakened] = useState<number>(0);
+  const [totalUntangled, setTotalUntangled] = useState<number>(0);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -71,66 +55,71 @@ export function PrismApp() {
     }, 3200);
   }, []);
 
-  // Fetch initial data from server
+  // Fetch initial data
   useEffect(() => {
     async function loadData() {
       try {
         const res = await fetch('/api/init');
         if (res.ok) {
-          const data = (await res.json()) as PrismInitResponse;
+          const data = (await res.json()) as TangleInitResponse;
           if (data.level) {
             setLevel(data.level);
-            setPieces(data.level.availablePieces.map((p) => ({ ...p })));
+            setNodes(data.level.nodes.map((n) => ({ ...n })));
             setCurrentDay(data.dayNumber);
+            previousCrossingsRef.current = data.level.initialCrossings;
           }
           if (data.communityStats) {
-            setCommunityCrystals(data.communityStats.totalCrystalsAwakened);
-            setTotalSolves(data.communityStats.totalSolves);
+            setTotalSolved(data.communityStats.totalSolved);
           }
           if (data.userStats) {
             setCurrentStreak(data.userStats.currentStreak);
             setMaxStreak(data.userStats.maxStreak);
-            setTotalAwakened(data.userStats.totalChambersAwakened);
+            setTotalUntangled(data.userStats.totalSolved);
           }
         }
       } catch (err) {
-        console.error('Error fetching PRISM init data:', err);
+        console.error('Error loading Tangle init data:', err);
       }
     }
     void loadData();
   }, []);
 
-  // Load past day chamber
-  const selectChamber = useCallback((day: number) => {
-    const newLvl = getChamberForDay(day);
+  // Load a past day
+  const selectDay = useCallback((day: number) => {
+    const newLvl = getTangleLevelForDay(day);
     setCurrentDay(day);
     setLevel(newLvl);
-    setPieces(newLvl.availablePieces.map((p) => ({ ...p })));
+    setNodes(newLvl.nodes.map((n) => ({ ...n })));
+    setUndoStack([]);
     setMoveCount(0);
-    hasWonRef.current = false;
     setHasSubmitted(false);
-    setSelectedPieceId(null);
+    hasWonRef.current = false;
+    previousCrossingsRef.current = newLvl.initialCrossings;
+    setDraggingNodeId(null);
+    setSelectedNodeId(null);
     setShowArchiveModal(false);
   }, []);
 
-  // Run real-time laser ray tracing simulation
-  const simulation = useMemo(() => {
-    return simulateChamber(level.gridSize, level.emitters, pieces, level.walls, level.crystals);
-  }, [level, pieces]);
+  // Graph evaluation
+  const evaluation = useMemo(() => {
+    return evaluateGraph(nodes, level.edges);
+  }, [nodes, level.edges]);
 
-  // Submit score on chamber awakening
+  const hasWon = evaluation.crossingsCount === 0;
+
+  // Submit score on untangle
   const submitSolution = useCallback(
     async (finalMoves: number) => {
       if (hasSubmitted) return;
       setHasSubmitted(true);
 
-      const score = 1000 + Math.max(0, level.parMoves - finalMoves) * 200 + level.crystals.length * 250;
-      const payload: SubmitPrismRequest = {
+      const score = 1000 + Math.max(0, level.parMoves - finalMoves) * 150 + level.nodes.length * 50;
+      const payload: SubmitTangleRequest = {
         dayNumber: currentDay,
         won: true,
         moves: finalMoves,
         parMoves: level.parMoves,
-        crystalsAwakened: level.crystals.length,
+        initialCrossings: level.initialCrossings,
         score,
       };
 
@@ -141,118 +130,171 @@ export function PrismApp() {
           body: JSON.stringify(payload),
         });
         if (res.ok) {
-          const resp = (await res.json()) as SubmitPrismResponse;
+          const resp = (await res.json()) as SubmitTangleResponse;
           if (resp.newStreak !== undefined) {
             setCurrentStreak(resp.newStreak);
           }
-          if (resp.totalCrystalsAwakened !== undefined) {
-            setCommunityCrystals(resp.totalCrystalsAwakened);
+          if (resp.totalKnotsUntangled !== undefined) {
+            setTotalSolved(resp.totalKnotsUntangled);
           }
         }
       } catch (err) {
-        console.error('Error submitting PRISM solution:', err);
+        console.error('Error submitting tangle solution:', err);
       }
     },
-    [currentDay, hasSubmitted, level.crystals.length, level.parMoves]
+    [currentDay, hasSubmitted, level.initialCrossings, level.nodes.length, level.parMoves]
   );
 
-  const hasWon = simulation.isSolved;
-
-  // Watch for chamber solved state
+  // Watch for solve
   useEffect(() => {
-    if (simulation.isSolved && !hasWonRef.current) {
+    if (hasWon && !hasWonRef.current) {
       hasWonRef.current = true;
-      prismSounds.playChamberComplete();
+      tangleSounds.playSolved();
       void submitSolution(moveCount);
     }
-  }, [simulation.isSolved, moveCount, submitSolution]);
+  }, [hasWon, moveCount, submitSolution]);
 
-  // Handle cell click (place piece or rotate existing piece)
-  const handleCellClick = useCallback(
-    (row: number, col: number) => {
+  // Pointer Drag & Drop Handlers
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<SVGGElement>, nodeId: string) => {
       if (hasWon) return;
+      e.stopPropagation();
 
-      // Check if wall or crystal is here
-      const isWall = level.walls.some((w) => w.row === row && w.col === col);
-      if (isWall) return;
-
-      // Check if a piece is already in this cell
-      const existingPieceIndex = pieces.findIndex(
-        (p) => p.position && p.position.row === row && p.position.col === col
-      );
-
-      if (existingPieceIndex !== -1) {
-        const existing = pieces[existingPieceIndex];
-        if (existing && existing.type === 'mirror') {
-          // Rotate mirror angle
-          prismSounds.playClick();
-          setPieces((prev) => {
-            const next = [...prev];
-            const p = next[existingPieceIndex]!;
-            next[existingPieceIndex] = {
-              ...p,
-              angle: p.angle === 'forward' ? 'backward' : 'forward',
-            };
-            return next;
-          });
-          setMoveCount((c) => c + 1);
-        }
-        return;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) {
+        dragStartPosRef.current = { x: node.x, y: node.y };
       }
 
-      // If empty cell and a piece is selected from inventory: place it!
-      if (selectedPieceId) {
-        const pieceIndex = pieces.findIndex((p) => p.id === selectedPieceId);
-        if (pieceIndex !== -1) {
-          prismSounds.playClick();
-          setPieces((prev) => {
-            const next = [...prev];
-            const p = next[pieceIndex]!;
-            next[pieceIndex] = {
-              ...p,
-              position: { row, col },
-            };
-            return next;
-          });
-          setMoveCount((c) => c + 1);
-          setSelectedPieceId(null);
-        }
+      setDraggingNodeId(nodeId);
+      setSelectedNodeId(nodeId);
+      tangleSounds.playGrab();
+
+      try {
+        (e.target as Element).setPointerCapture(e.pointerId);
+      } catch {
+        // Fallback
       }
     },
-    [hasWon, level.walls, pieces, selectedPieceId]
+    [hasWon, nodes]
   );
 
-  // Return a placed piece to inventory
-  const handleReturnToInventory = useCallback(
-    (pieceId: string) => {
-      if (hasWon) return;
-      prismSounds.playClick();
-      setPieces((prev) =>
-        prev.map((p) => (p.id === pieceId ? { ...p, position: undefined } : p))
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingNodeId || hasWon || !containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const rawX = (e.clientX - rect.left) / rect.width;
+      const rawY = (e.clientY - rect.top) / rect.height;
+
+      const clampedX = Math.max(0.1, Math.min(0.9, rawX));
+      const clampedY = Math.max(0.1, Math.min(0.9, rawY));
+
+      setNodes((prev) =>
+        prev.map((n) => (n.id === draggingNodeId ? { ...n, x: clampedX, y: clampedY } : n))
       );
-      setSelectedPieceId(null);
     },
-    [hasWon]
+    [draggingNodeId, hasWon]
   );
 
-  // Reset entire chamber
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingNodeId) return;
+
+      try {
+        (e.target as Element).releasePointerCapture(e.pointerId);
+      } catch {
+        // Fallback
+      }
+
+      const currentNode = nodes.find((n) => n.id === draggingNodeId);
+      const startPos = dragStartPosRef.current;
+
+      // Only count as a move if position changed meaningfully (> 2%)
+      if (currentNode && startPos) {
+        const dx = currentNode.x - startPos.x;
+        const dy = currentNode.y - startPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.02) {
+          // Push previous positions to undo stack
+          setUndoStack((prev) => [
+            ...prev,
+            nodes.map((n) =>
+              n.id === draggingNodeId ? { ...n, x: startPos.x, y: startPos.y } : { ...n }
+            ),
+          ]);
+          setMoveCount((c) => c + 1);
+          tangleSounds.playDrop();
+
+          if (evaluation.crossingsCount < previousCrossingsRef.current) {
+            tangleSounds.playUncross(evaluation.crossingsCount);
+          }
+          previousCrossingsRef.current = evaluation.crossingsCount;
+        }
+      }
+
+      setDraggingNodeId(null);
+      dragStartPosRef.current = null;
+    },
+    [draggingNodeId, evaluation.crossingsCount, nodes]
+  );
+
+  // Tap-to-move fallback for keyboard or non-drag pointers
+  const handleBoardClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (hasWon || !selectedNodeId || !containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const rawX = (e.clientX - rect.left) / rect.width;
+      const rawY = (e.clientY - rect.top) / rect.height;
+
+      const clampedX = Math.max(0.1, Math.min(0.9, rawX));
+      const clampedY = Math.max(0.1, Math.min(0.9, rawY));
+
+      // Push current to undo
+      setUndoStack((prev) => [...prev, nodes.map((n) => ({ ...n }))]);
+      setNodes((prev) =>
+        prev.map((n) => (n.id === selectedNodeId ? { ...n, x: clampedX, y: clampedY } : n))
+      );
+      setMoveCount((c) => c + 1);
+      tangleSounds.playDrop();
+      setSelectedNodeId(null);
+    },
+    [hasWon, nodes, selectedNodeId]
+  );
+
+  // Undo move
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0 || hasWon) return;
+    const previous = undoStack[undoStack.length - 1];
+    if (!previous) return;
+
+    tangleSounds.playGrab();
+    setNodes(previous);
+    setUndoStack((prev) => prev.slice(0, -1));
+  }, [hasWon, undoStack]);
+
+  // Reset knot
   const handleReset = useCallback(() => {
-    prismSounds.playClick();
-    setPieces(level.availablePieces.map((p) => ({ ...p })));
+    tangleSounds.playGrab();
+    setNodes(level.nodes.map((n) => ({ ...n })));
+    setUndoStack([]);
     setMoveCount(0);
-    hasWonRef.current = false;
     setHasSubmitted(false);
-    setSelectedPieceId(null);
+    hasWonRef.current = false;
+    previousCrossingsRef.current = level.initialCrossings;
+    setDraggingNodeId(null);
+    setSelectedNodeId(null);
   }, [level]);
 
-  // Toggle sound
+  // Sound toggle
   const toggleSound = useCallback(() => {
-    const muted = prismSounds.toggleMute();
+    const muted = tangleSounds.toggleMute();
     setIsMuted(muted);
-    showToast(muted ? '🔇 Sound muted' : '🔊 Sound enabled');
+    showToast(muted ? 'Sound muted' : 'Sound enabled');
   }, [showToast]);
 
-  // Star rating
+  // Stars calculation
   const stars = useMemo(() => {
     if (!hasWon) return 0;
     if (moveCount <= level.parMoves) return 3;
@@ -261,586 +303,295 @@ export function PrismApp() {
   }, [hasWon, moveCount, level.parMoves]);
 
   const score = useMemo(() => {
-    return 1000 + Math.max(0, level.parMoves - moveCount) * 200 + level.crystals.length * 250;
-  }, [level.parMoves, moveCount, level.crystals.length]);
+    return 1000 + Math.max(0, level.parMoves - moveCount) * 150 + level.nodes.length * 50;
+  }, [level.nodes.length, level.parMoves, moveCount]);
 
-  // Reddit comment sharing
+  // Reddit Share
   const handleShare = useCallback(() => {
     const starText = stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐';
     const paddedDay = currentDay.toString().padStart(3, '0');
     const subreddit = context.subredditName ?? 'windward_daily_dev';
 
     const shareText = [
-      `💎 PRISM #${paddedDay} ${starText}`,
-      `Awakened in ${moveCount} moves (Par: ${level.parMoves})`,
-      `Score: ${score.toLocaleString()}${currentStreak > 0 ? ` · Streak: ${currentStreak} 🔥` : ''}`,
+      `TANGLE #${paddedDay} · Daily Knot ${starText}`,
+      `Solved in ${moveCount} moves (Par: ${level.parMoves})`,
+      `Crossings: ${level.initialCrossings} ➔ 0`,
+      `Score: ${score.toLocaleString()}${currentStreak > 0 ? ` · Streak: ${currentStreak} days` : ''}`,
       '',
-      '🔴 ➔ 🪞 ➔ 💎 (Violet)',
-      '🟢 ➔ 🪞 ➔ 💎 (Amber)',
-      '',
-      `Awaken today on r/${subreddit}!`,
+      `Untangle today on r/${subreddit}`,
     ].join('\n');
 
     navigator.clipboard
       .writeText(shareText)
       .then(() => {
-        showToast('📋 Copied chamber record! Paste into Reddit comments below.');
+        showToast('Copied knot record to clipboard. Paste into Reddit comments.');
       })
       .catch(() => {
-        showToast('Recorded chamber solve! Paste to Reddit comments.');
+        showToast('Recorded knot solve. Share to Reddit.');
       });
-  }, [stars, currentDay, moveCount, level.parMoves, score, currentStreak, showToast]);
+  }, [stars, currentDay, moveCount, level.parMoves, level.initialCrossings, score, currentStreak, showToast]);
 
-  // Inventory pieces not yet on the board
-  const inventoryPieces = useMemo(() => {
-    return pieces.filter((p) => !p.position);
-  }, [pieces]);
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    for (const n of nodes) {
+      map.set(n.id, n);
+    }
+    return map;
+  }, [nodes]);
 
   return (
-    <main className="prism-app">
-      {/* Toast Alert */}
-      {toastMessage && <div className="windward-toast">{toastMessage}</div>}
+    <main className="tangle-app">
+      {/* Toast */}
+      {toastMessage && <div className="toast-box">{toastMessage}</div>}
 
-      {/* Top Bar Header */}
+      {/* Header */}
       <header className="topbar">
         <div className="brand">
-          <div className="brand-icon">💎</div>
-          <div>
-            <div className="brand-name">PRISM</div>
-            <div className="brand-caption">LIGHT SYNTHESIS</div>
-          </div>
+          <div className="brand-mark" />
+          <span className="brand-name">Tangle</span>
         </div>
 
-        <div className="header-actions">
+        <div className="header-meta">
           <button
-            className="icon-button"
+            className="icon-btn"
             onClick={toggleSound}
             aria-label="Toggle sound"
-            title="Toggle Sound"
+            title="Toggle sound"
           >
             {isMuted ? '🔇' : '🔊'}
           </button>
 
           <button
-            className="icon-button"
+            className="icon-btn"
             onClick={() => setShowHelpModal(true)}
             aria-label="How to play"
             title="How to play"
           >
-            ❓
+            ?
           </button>
 
           <button
-            className="icon-button"
+            className="icon-btn"
             onClick={() => setShowStatsModal(true)}
-            aria-label="Records & Streaks"
-            title="Records & Streaks"
+            aria-label="Records & streaks"
+            title="Records & streaks"
           >
-            🏆
+            ≡
           </button>
 
           <button
-            className="icon-button"
+            className="icon-btn"
             onClick={() => setShowArchiveModal(true)}
-            aria-label="Past Chambers Archive"
-            title="Chamber Archive"
+            aria-label="Past knots"
+            title="Past knots"
           >
             📅
           </button>
 
-          <div className="daily-badge">
-            <span className="live-dot" />
-            CHAMBER #{currentDay.toString().padStart(3, '0')}
-          </div>
+          <span className="daily-label">#{currentDay.toString().padStart(3, '0')}</span>
         </div>
       </header>
 
-      {/* Title & Objectives */}
-      <section className="intro">
-        <div className="eyebrow">{level.title.toUpperCase()} · PAR {level.parMoves} MOVES</div>
-        <h1>
-          Awaken the <span>crystals.</span>
-        </h1>
-        <p>{level.subtitle}</p>
-      </section>
-
-      {/* Live HUD Stats */}
-      <section className="stats" aria-label="Chamber statistics">
-        <div className="stat-card">
-          <span className="stat-label">CRYSTALS AWAKENED</span>
-          <strong>
-            {simulation.crystals.filter((c) => c.isSatisfied).length}
-            <small> / {level.crystals.length}</small>
-          </strong>
-          <span className="stat-icon">💎</span>
+      {/* Headline & Live Metrics */}
+      <section className="status-bar">
+        <div className="headline-wrap">
+          <h1>{level.title}</h1>
+          <p>Drag pins until zero lines cross</p>
         </div>
 
-        <div className="stat-card">
-          <span className="stat-label">MOVES USED</span>
-          <strong style={{ color: moveCount <= level.parMoves ? '#9cc98d' : '#eabf78' }}>
-            {moveCount}
-            <small> / PAR {level.parMoves}</small>
-          </strong>
-          <span className="stat-icon">⚡</span>
-        </div>
-
-        <div className="stat-card">
-          <span className="stat-label">UNPLACED PIECES</span>
-          <strong>
-            {inventoryPieces.length}
-            <small> LEFT</small>
-          </strong>
-          <span className="stat-icon">🪞</span>
-        </div>
-      </section>
-
-      {/* Optical Chamber Board (5x5 Grid with SVG laser beam overlay) */}
-      <section className="board-section">
-        <div className="board-heading">
-          <div>
-            <span className="section-label">OPTICAL RESONANCE GRID</span>
-            <span className="board-subtitle">Tap empty cell to place mirror · Tap placed mirror to rotate 90°</span>
+        <div className="metrics-group">
+          <div className="metric-pill">
+            <span>Crossings</span>
+            <strong className={evaluation.crossingsCount === 0 ? 'cleared' : 'tension'}>
+              {evaluation.crossingsCount}
+            </strong>
           </div>
-          <span className="level-marker">{level.gridSize} × {level.gridSize}</span>
+
+          <div className="metric-pill">
+            <span>Moves</span>
+            <strong>
+              {moveCount}
+              <span style={{ fontSize: '11px', color: '#637180', fontWeight: 400 }}> / {level.parMoves}</span>
+            </strong>
+          </div>
         </div>
+      </section>
 
-        <div className="chamber-wrapper">
-          {/* Edge Emitter Markers */}
-          {level.emitters.map((emitter) => {
-            const emitterClass = `emitter-node emitter-${emitter.direction} emitter-color-${emitter.color}`;
+      {/* Planar Knot Board */}
+      <div
+        ref={containerRef}
+        className="board-container"
+        onClick={handleBoardClick}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <svg className="tangle-svg" viewBox="0 0 1000 1000">
+          {/* Edges / Threads */}
+          {level.edges.map((edge) => {
+            const p1 = nodeMap.get(edge.source);
+            const p2 = nodeMap.get(edge.target);
+            if (!p1 || !p2) return null;
 
-            let topStyle = '0%';
-            let leftStyle = '0%';
-
-            if (emitter.direction === 'down') {
-              topStyle = '-14px';
-              leftStyle = `${(emitter.col + 0.5) * (100 / level.gridSize)}%`;
-            } else if (emitter.direction === 'up') {
-              topStyle = 'calc(100% + 2px)';
-              leftStyle = `${(emitter.col + 0.5) * (100 / level.gridSize)}%`;
-            } else if (emitter.direction === 'right') {
-              topStyle = `${(emitter.row + 0.5) * (100 / level.gridSize)}%`;
-              leftStyle = '-14px';
-            } else if (emitter.direction === 'left') {
-              topStyle = `${(emitter.row + 0.5) * (100 / level.gridSize)}%`;
-              leftStyle = 'calc(100% + 2px)';
-            }
+            const isTension = evaluation.edgeCrossingMap.has(edge.id);
 
             return (
-              <div
-                key={emitter.id}
-                className={emitterClass}
-                style={{
-                  top: topStyle,
-                  left: leftStyle,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                title={`${emitter.color.toUpperCase()} laser emitter`}
-              >
-                <span className="emitter-arrow">
-                  {emitter.direction === 'down'
-                    ? '▼'
-                    : emitter.direction === 'up'
-                      ? '▲'
-                      : emitter.direction === 'right'
-                        ? '▶'
-                        : '◀'}
-                </span>
-              </div>
+              <line
+                key={edge.id}
+                x1={p1.x * 1000}
+                y1={p1.y * 1000}
+                x2={p2.x * 1000}
+                y2={p2.y * 1000}
+                className={`thread-line ${isTension ? 'thread-tension' : 'thread-clear'}`}
+              />
             );
           })}
 
-          {/* Grid Cells */}
-          <div
-            className="prism-grid"
-            style={{
-              gridTemplateColumns: `repeat(${level.gridSize}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${level.gridSize}, minmax(0, 1fr))`,
-            }}
-          >
-            {Array.from({ length: level.gridSize }).map((_, r) =>
-              Array.from({ length: level.gridSize }).map((_, c) => {
-                const isWall = level.walls.some((w) => w.row === r && w.col === c);
-                const crystal = simulation.crystals.find((cr) => cr.row === r && cr.col === c);
-                const piece = pieces.find(
-                  (p) => p.position && p.position.row === r && p.position.col === c
-                );
+          {/* Intersection Points */}
+          {evaluation.crossingPoints.map((pt, idx) => (
+            <circle
+              key={`cross-${idx}`}
+              cx={pt.x * 1000}
+              cy={pt.y * 1000}
+              r={4}
+              className="crossing-indicator"
+            />
+          ))}
 
-                const isTargetCell = !isWall && !piece && selectedPieceId !== null;
+          {/* Nodes (Pins) */}
+          {nodes.map((node) => {
+            const cx = node.x * 1000;
+            const cy = node.y * 1000;
+            const isDragging = draggingNodeId === node.id;
+            const isSelected = selectedNodeId === node.id;
 
-                let cellClass = 'prism-cell';
-                if (isWall) cellClass += ' cell-wall';
-                if (isTargetCell) cellClass += ' cell-target-highlight';
-                if (crystal?.isSatisfied) cellClass += ' cell-crystal-awakened';
+            return (
+              <g
+                key={node.id}
+                className={`pin-node ${isDragging || isSelected ? 'pin-active' : ''}`}
+                onPointerDown={(e) => handlePointerDown(e, node.id)}
+              >
+                <circle cx={cx} cy={cy + 4} r={14} className="pin-shadow" />
+                <circle cx={cx} cy={cy} r={13} className="pin-body" />
+                <circle cx={cx} cy={cy} r={4} className="pin-core" />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
-                return (
-                  <div
-                    key={`${r}-${c}`}
-                    className={cellClass}
-                    onClick={() => handleCellClick(r, c)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Cell row ${r + 1}, column ${c + 1}`}
-                  >
-                    {/* Obsidian Wall */}
-                    {isWall && <div className="wall-block" title="Obsidian Wall (Absorbs light)" />}
+      {/* Controls Bar */}
+      <div className="controls-bar">
+        <button
+          className="action-btn"
+          onClick={handleUndo}
+          disabled={undoStack.length === 0 || hasWon}
+        >
+          <span>Undo ({undoStack.length})</span>
+        </button>
 
-                    {/* Target Crystal */}
-                    {crystal && (
-                      <div
-                        className={`crystal-gem ${crystal.isSatisfied ? 'crystal-active' : ''}`}
-                        style={{
-                          color: COLOR_HEX[crystal.targetColor],
-                          filter: crystal.isSatisfied
-                            ? `drop-shadow(0 0 12px ${COLOR_GLOW[crystal.targetColor]})`
-                            : undefined,
-                        }}
-                        title={`Target: ${crystal.targetColor.toUpperCase()} (${crystal.isSatisfied ? 'Awakened!' : 'Inactive'})`}
-                      >
-                        <span className="crystal-symbol">💎</span>
-                        <span
-                          className="crystal-color-pill"
-                          style={{
-                            background: COLOR_HEX[crystal.targetColor],
-                          }}
-                        />
-                      </div>
-                    )}
+        <button className="action-btn" onClick={handleReset}>
+          <span>Reset knot</span>
+        </button>
+      </div>
 
-                    {/* Placed Mirror */}
-                    {piece && piece.type === 'mirror' && (
-                      <div
-                        className={`mirror-piece angle-${piece.angle}`}
-                        title="Angle Mirror (Tap to rotate 90°)"
-                      >
-                        <div className="mirror-surface" />
-                        <span className="mirror-icon">🪞</span>
-                        <button
-                          className="remove-piece-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReturnToInventory(piece.id);
-                          }}
-                          title="Return to inventory"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* SVG Real-Time Laser Rays Overlay */}
-          <svg className="laser-svg-canvas" viewBox={`0 0 ${level.gridSize * 100} ${level.gridSize * 100}`}>
-            <defs>
-              <filter id="laser-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3.5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {simulation.beams.map((beam, idx) => {
-              const x1 = (beam.fromCol + 0.5) * 100;
-              const y1 = (beam.fromRow + 0.5) * 100;
-              const x2 = (beam.toCol + 0.5) * 100;
-              const y2 = (beam.toRow + 0.5) * 100;
-              const colorHex = COLOR_HEX[beam.color];
-
-              return (
-                <g key={`beam-${idx}`}>
-                  {/* Outer vibrant glow path */}
-                  <line
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke={colorHex}
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    opacity="0.6"
-                    filter="url(#laser-glow)"
-                  />
-                  {/* Inner bright core beam */}
-                  <line
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    opacity="0.9"
-                  />
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-
-        {/* Color Synthesis Legend */}
-        <div className="legend">
-          <span>
-            <i style={{ color: COLOR_HEX.red }}>●</i> Red
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.green }}>●</i> Green
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.blue }}>●</i> Blue
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.magenta }}>●</i> Violet (R+B)
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.yellow }}>●</i> Amber (R+G)
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.cyan }}>●</i> Cyan (G+B)
-          </span>
-          <span>
-            <i style={{ color: COLOR_HEX.white }}>●</i> White (R+G+B)
-          </span>
-        </div>
-      </section>
-
-      {/* Optical Inventory Dock */}
-      <section className="inventory-section">
-        <div className="controls-heading">
-          <div>
-            <span className="section-label">OPTICAL INVENTORY</span>
-            <span className="board-subtitle">Tap a mirror, then tap any empty cell to place</span>
-          </div>
-          <span className="keyboard-hint">{inventoryPieces.length} UNPLACED</span>
-        </div>
-
-        <div className="inventory-rack">
-          {inventoryPieces.length === 0 ? (
-            <div className="inventory-empty-msg">All optical mirrors placed on grid. Tap placed mirrors to rotate 90°.</div>
-          ) : (
-            inventoryPieces.map((p) => {
-              const isSelected = selectedPieceId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  className={`inventory-slot ${isSelected ? 'slot-selected' : ''}`}
-                  onClick={() => {
-                    prismSounds.playClick();
-                    setSelectedPieceId(isSelected ? null : p.id);
-                  }}
-                  title={`Angle Mirror (${p.angle === 'forward' ? '/' : '\\'}) - Tap to select`}
-                >
-                  <span className="inventory-mirror-icon">🪞</span>
-                  <span className="inventory-label">
-                    Mirror {p.angle === 'forward' ? '/' : '\\'}
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="action-row">
-          <button className="secondary-action-btn" onClick={handleReset} title="Reset all mirrors">
-            <span>↻</span>
-            <span>Reset Chamber</span>
-          </button>
-        </div>
-      </section>
-
-      {/* Chamber Solved Result Card */}
+      {/* Result Card */}
       {hasWon && (
         <section className="result-card">
-          <div className="result-eyebrow">
-            {stars === 3 ? 'FLAWLESS SYNTHESIS ⭐⭐⭐' : stars === 2 ? 'EXCELLENT OPTICS ⭐⭐' : 'CHAMBER AWAKENED ⭐'}
+          <div className="result-header">
+            <span className="result-title">Knot untangled</span>
+            <span className="result-stars">
+              {stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐'}
+            </span>
           </div>
 
-          <div className="result-score">{score.toLocaleString()}</div>
-          <div className="result-caption">TOTAL OPTICAL SCORE</div>
-
           <p>
-            All {level.crystals.length} crystals awakened in {moveCount} moves (Par: {level.parMoves} moves).
+            Solved in {moveCount} moves with zero intersecting lines. Par target was {level.parMoves} moves.
           </p>
 
-          <button className="share-btn" onClick={handleShare}>
-            <span>📋</span>
-            <span>SHARE RECORD TO REDDIT COMMENTS</span>
-          </button>
-
-          <button className="restart-button full-restart" onClick={handleReset}>
-            EXPERIMENT AGAIN ↻
+          <button className="primary-btn" onClick={handleShare}>
+            Share record to Reddit comments
           </button>
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="game-footer">
-        <span>COMMUNITY CRYSTALS: {communityCrystals.toLocaleString()}</span>
-        <span>PRISM © 2026 · DAILY LIGHT SYNTHESIS</span>
-      </footer>
-
-      {/* HOW TO PLAY MODAL */}
+      {/* How to play modal */}
       {showHelpModal && (
         <div className="modal-backdrop" onClick={() => setShowHelpModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>How to Play PRISM</h2>
-              <button className="close-button" onClick={() => setShowHelpModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title-row">
+              <h2>How to play</h2>
+              <button className="close-btn" onClick={() => setShowHelpModal(false)}>
                 ✕
               </button>
             </div>
-
-            <div className="modal-section">
-              <p style={{ color: '#c4dcd3', fontSize: '12px', lineHeight: '1.6', margin: '0 0 12px' }}>
-                PRISM is a daily optical synthesis puzzle. Your goal is to guide primary laser beams (Red, Green, Blue)
-                across the chamber to awaken the target crystals with their required synthesized colors.
-              </p>
-            </div>
-
-            <div className="modal-section">
-              <h3>Additive Color Synthesis</h3>
-              <div className="modal-grid-help">
-                <div className="help-card">
-                  <span className="help-icon" style={{ color: COLOR_HEX.magenta }}>🟣</span>
-                  <div>
-                    <strong>Violet (Magenta)</strong>
-                    <p>Red laser + Blue laser</p>
-                  </div>
-                </div>
-
-                <div className="help-card">
-                  <span className="help-icon" style={{ color: COLOR_HEX.yellow }}>🟡</span>
-                  <div>
-                    <strong>Amber (Yellow)</strong>
-                    <p>Red laser + Green laser</p>
-                  </div>
-                </div>
-
-                <div className="help-card">
-                  <span className="help-icon" style={{ color: COLOR_HEX.cyan }}>🔵</span>
-                  <div>
-                    <strong>Cyan</strong>
-                    <p>Green laser + Blue laser</p>
-                  </div>
-                </div>
-
-                <div className="help-card">
-                  <span className="help-icon" style={{ color: COLOR_HEX.white }}>⚪</span>
-                  <div>
-                    <strong>Pure Radiance</strong>
-                    <p>Red + Green + Blue</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-section" style={{ marginTop: '16px' }}>
-              <h3>Controls</h3>
-              <p style={{ color: '#8ba29d', fontSize: '11px', margin: 0 }}>
-                • Tap any mirror in your inventory, then tap an empty cell to place it.<br />
-                • Tap a placed mirror on the grid to rotate its reflective angle 90°.<br />
-                • Tap the '✕' on a mirror to return it to your inventory.<br />
-                • Beat the Par move target for 3 stars!
-              </p>
-            </div>
+            <p>
+              Tangle is a daily knot untangling puzzle based on planar graph theory.
+            </p>
+            <p>
+              Every knot begins tangled with intersecting threads. Drag the brass pins across the board until{' '}
+              <strong>no lines cross</strong>.
+            </p>
+            <p>
+              • Dashed amber threads indicate active tension (crossing).<br />
+              • Solid silver threads are clear.<br />
+              • Beat the Par move target for 3 stars.
+            </p>
           </div>
         </div>
       )}
 
-      {/* ARCHIVE MODAL */}
+      {/* Archive modal */}
       {showArchiveModal && (
         <div className="modal-backdrop" onClick={() => setShowArchiveModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Chamber Archive</h2>
-              <button className="close-button" onClick={() => setShowArchiveModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title-row">
+              <h2>Past knots</h2>
+              <button className="close-btn" onClick={() => setShowArchiveModal(false)}>
                 ✕
               </button>
             </div>
+            <p>Practice past daily knots to refine your untangling strategy.</p>
 
-            <p style={{ color: '#8ba29d', fontSize: '11px', marginBottom: '14px' }}>
-              Practice past optical chambers to hone your light reflection and color mixing skills.
-            </p>
+            {Array.from({ length: 6 }, (_, i) => {
+              const day = Math.max(1, todayDayNumber - i);
+              const info = getTangleLevelForDay(day);
+              const isCurrent = day === currentDay;
 
-            <div className="archive-list">
-              {Array.from({ length: 6 }, (_, i) => {
-                const day = Math.max(1, todayDayNumber - i);
-                const info = getChamberForDay(day);
-                const isCurrent = day === currentDay;
-
-                return (
-                  <div
-                    key={day}
-                    className={`archive-item ${isCurrent ? 'active' : ''}`}
-                    onClick={() => selectChamber(day)}
-                  >
-                    <div>
-                      <div className="archive-title">
-                        Chamber #{day.toString().padStart(3, '0')} · {info.title}
-                        {day === todayDayNumber && <span style={{ color: '#9cc98d', marginLeft: '6px' }}>(Today)</span>}
-                      </div>
-                      <div className="archive-subtitle">
-                        Par {info.parMoves} moves · {info.crystals.length} crystals
-                      </div>
-                    </div>
-                    <span style={{ color: '#c4dcd3', fontSize: '14px' }}>↗</span>
-                  </div>
-                );
-              })}
-            </div>
+              return (
+                <div
+                  key={day}
+                  className={`archive-item ${isCurrent ? 'active' : ''}`}
+                  onClick={() => selectDay(day)}
+                >
+                  <span className="archive-name">
+                    Knot #{day.toString().padStart(3, '0')} · {info.title}
+                  </span>
+                  <span className="archive-par">Par {info.parMoves}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* STATS & STREAKS MODAL */}
+      {/* Stats modal */}
       {showStatsModal && (
         <div className="modal-backdrop" onClick={() => setShowStatsModal(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Optician Records & Streaks</h2>
-              <button className="close-button" onClick={() => setShowStatsModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title-row">
+              <h2>Records & streaks</h2>
+              <button className="close-btn" onClick={() => setShowStatsModal(false)}>
                 ✕
               </button>
             </div>
-
-            <div className="community-banner" style={{ margin: '0 0 16px' }}>
-              <div className="community-stat">
-                <span className="community-num">{currentStreak}</span>
-                <span className="community-label">Current Streak</span>
-              </div>
-              <div className="community-divider" />
-              <div className="community-stat">
-                <span className="community-num">{maxStreak}</span>
-                <span className="community-label">Max Streak</span>
-              </div>
-              <div className="community-divider" />
-              <div className="community-stat">
-                <span className="community-num">{totalAwakened}</span>
-                <span className="community-label">Total Solves</span>
-              </div>
-            </div>
-
-            <div className="modal-section">
-              <h3>Community Lumens Awakened</h3>
-              <p style={{ color: '#b2c7c1', fontSize: '12px', lineHeight: '1.6', margin: '4px 0 0' }}>
-                Reddit opticians have awakened <strong>{communityCrystals.toLocaleString()} crystals</strong> across{' '}
-                <strong>{totalSolves.toLocaleString()} chambers</strong> worldwide today.
-              </p>
-            </div>
-
-            <div className="modal-section" style={{ marginTop: '16px' }}>
-              <h3>Subreddit Optician</h3>
-              <p style={{ color: '#8ba29d', fontSize: '11px', margin: 0 }}>
-                Logged in as: <strong>u/{context.username ?? 'anonymous'}</strong> on{' '}
-                <strong>r/{context.subredditName ?? 'windward_daily_dev'}</strong>.
-              </p>
-            </div>
+            <p>
+              Current streak: <strong>{currentStreak} days</strong><br />
+              Longest streak: <strong>{maxStreak} days</strong><br />
+              Total solved: <strong>{totalUntangled} knots</strong>
+            </p>
+            <p style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px' }}>
+              The Reddit community has untangled <strong>{totalSolved.toLocaleString()} knots</strong> today.
+            </p>
           </div>
         </div>
       )}
@@ -850,6 +601,6 @@ export function PrismApp() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PrismApp />
+    <TangleApp />
   </StrictMode>
 );

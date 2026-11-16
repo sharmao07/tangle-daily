@@ -1,62 +1,58 @@
-# PRISM: Daily Light & Color Synthesis 💎
+# TANGLE: A Daily Knot 🧵
 ### Reddit’s Game of the Day Hackathon 2026 Submission
 
-> *"Bend light. Synthesize color. Awaken the ancient crystals."*
+> *"Drag the pins to untangle the threads. Leave zero lines crossing."*
 
-**PRISM** is a completely unique, handcrafted daily optical routing and additive color synthesis puzzle built natively for Reddit using **Devvit Web** (React 19, TypeScript, Tailwind CSS 4, Hono, Devvit Redis, and Web Audio API).
+**Tangle** is an original daily planar graph puzzle built natively for Reddit using **Devvit Web** (React 19, TypeScript, Tailwind CSS 4, Hono, Devvit Redis, and Web Audio API).
 
 - **App Name / Slug:** `windward-daily` (Active on Developer Platform)
-- **App Title for Subreddit & Hackathon:** **PRISM: Daily Light Synthesis**
+- **App Title for Subreddit & Hackathon:** **Tangle: A Daily Knot**
 - **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 - **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-- **Deployed Version:** `v0.0.4` (Active on `r/windward_daily_dev`)
+- **Deployed Version:** `v0.0.5` (Active on `r/windward_daily_dev`)
 
 ---
 
 ## 🎮 The Core Premise & Mechanics
 
-Every day at 00:00 UTC, an ancient optical chamber unlocks on Reddit. Laser emitters along the perimeter shoot primary light beams (**Red, Green, Blue**). Dormant crystals on the grid must be energized by specific **synthesized wavelengths**:
+Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grounded in Graph Theory:
 
-* **Primary Beams:** Red (`🔴`), Green (`🟢`), Blue (`🔵`)
-* **Secondary Synthesized Wavelengths:**
-  * **Violet (Magenta):** Red + Blue (`🟣`)
-  * **Amber (Yellow):** Red + Green (`🟡`)
-  * **Cyan:** Green + Blue (`🔵`)
-* **Tertiary Radiance (White):** Red + Green + Blue (`⚪`)
-
-### How to Play:
-1. **Inventory of Mirrors:** You are given 2–4 angle mirrors (`/` and `\`) each day.
-2. **Place & Rotate:** Tap a mirror in your inventory, then tap any empty cell on the grid to position it. Tap placed mirrors on the grid to rotate their reflective angle 90° in real time.
-3. **Additive Ray Tracing:** Lasers reflect and intersect across the grid with real-time SVG neon glow rendering.
-4. **Awaken the Crystals:** When the target crystal receives the required light combination, it pulses with celestial resonance!
+* **The Knot:** Every day at 00:00 UTC, a new scrambled planar graph unlocks with 6 to 9 brass pins and interconnected silk threads.
+* **The Goal:** Untangle the threads until **zero lines cross**.
+* **Direct Tactile Drag:** Touch/click and drag any brass pin across the drafting board. As you drag, intersecting threads are calculated in real time using 2D cross-product line intersection math.
+* **Real-Time Visual & Auditory Feedback:**
+  * **Tension Lines:** Crossed lines appear dashed with warm amber tension and orange intersection nodes.
+  * **Cleared Lines:** Uncrossed lines immediately turn solid silver/bone white.
+  * **Acoustic Feedback:** Procedural Web Audio synthesizer plays a quiet tactile peg lift on grab, soft placement tap on release, rising metallic pings as crossings decrease, and a serene harmonic C Major 7 chord upon full solve.
 
 ---
 
-## 🏆 Hackathon Alignment & Judging Criteria
+## 🏆 Hackathon Alignment & Unslopped Design
 
-### 1. Delightful UX & Artisanal Visual Craft
-* **Zero AI-slop aesthetic:** Bespoke obsidian chamber styling with glowing neon laser beams, realistic light bloom, and animated beam rings.
-* **Procedural Web Audio API:** Zero external audio assets, zero loading latency. Synthesizes tactile mirror rotation clicks, crystal resonance chimes (tuned to D5, E5, G5, A5), and a celestial E Major 9 victory chord. Includes a 1-tap mute toggle.
-* **Responsive Viewport Budgeting:** Specifically built to fit cleanly within Reddit's mobile feed and webview without vertical clipping or awkward scrollbars.
+### 1. Completely Unslopped UI Craft
+* Built following the CC-BY-4.0 `unslop` design guidelines:
+  * Strict **graphite neutral ramp** (`#0e1114`, `#14181c`, `#1c2127`, `#252c34`, `#8a9ba8`, `#eef2f6`).
+  * **Zero AI-slop tropes:** No purple gradients, no glowing blobs, no emoji decorations in headings or buttons, no gradient text, no uppercase tracked labels.
+  * Clean sentence case typography with `@fontsource-variable/geist`.
+  * Responsive viewport budgeting with `touch-action: none` ensuring smooth 60 FPS mobile dragging without page scrolling.
 
-### 2. Calibrated Daily Content
-* **Deterministic Synchronized Puzzles:** Seeded by calendar day number so all Reddit players experience the exact same puzzle today.
-* **Curated Progression:** Handcrafted master chambers for introductory days, followed by calibrated procedural generation.
-* **Chamber Archive:** Players can revisit and practice the past 7 daily chambers without waiting 24 hours.
+### 2. Guaranteed Solvability & Par Moves
+* Every daily knot is mathematically generated from a guaranteed planar embedding and scrambled with a deterministic Mulberry32 PRNG seed.
+* Includes a **7-Day Past Knots Archive** for practice and replayability.
 
 ### 3. Native Reddit Community Integration
-* **Community Lumens Awakened:** Devvit Redis tracks the collective count of crystals energized worldwide and daily solves.
-* **Spoiler-Free Reddit Comment Card:** 1-click clipboard copy of formatted emoji optical results designed for Reddit discussion threads:
+* **Community Counter:** Devvit Redis tracks the collective count of knots untangled worldwide today.
+* **Spoiler-Free Reddit Comment Card:** 1-click clipboard copy of formatted results designed for Reddit discussion threads:
   ```
-  💎 PRISM #018 ⭐⭐⭐
-  Awakened in 2 moves (Par: 2)
-  🔴 ➔ 🪞 ➔ 💎 (Magenta)
-  Score: 1,500 · Streak: 5 🔥
+  TANGLE #042 · Daily Knot ⭐⭐⭐
+  Solved in 4 moves (Par: 4)
+  Crossings: 9 ➔ 0
+  Score: 1,400 · Streak: 5 days
 
-  Solve today on r/windward_daily_dev!
+  Untangle today on r/windward_daily_dev
   ```
-* **Streaks & Records:** Redis persists daily consecutive completions, highest streak, and personal best records per Reddit username (`u/username`).
+* **Streaks & Records:** Redis persists daily consecutive completions and personal best move records per Reddit username (`u/username`).
 
 ---
 
@@ -69,7 +65,7 @@ npm run test:types
 # Run ESLint
 npm run lint
 
-# Run Unit Tests (Physics & level solver tests)
+# Run Unit Tests (Computational geometry & generator tests)
 npm run test:unit
 
 # Build Client & Server
