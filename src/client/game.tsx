@@ -1,7 +1,7 @@
 import './index.css';
 
 import { context } from '@devvit/web/client';
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   calculateDayNumber,
@@ -14,6 +14,14 @@ import {
   type TangleLevel,
 } from '../shared/api';
 import { tangleSounds } from './tangle-audio';
+
+interface Spark {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
 
 export function TangleApp() {
   const todayDayNumber = useMemo(() => calculateDayNumber(), []);
@@ -29,6 +37,9 @@ export function TangleApp() {
   // Active interaction
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [showTensionHint, setShowTensionHint] = useState<boolean>(false);
+  const [sparks, setSparks] = useState<Spark[]>([]);
+
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const previousCrossingsRef = useRef<number>(level.initialCrossings);
   const hasWonRef = useRef<boolean>(false);
@@ -48,6 +59,8 @@ export function TangleApp() {
   const [maxStreak, setMaxStreak] = useState<number>(0);
   const [totalUntangled, setTotalUntangled] = useState<number>(0);
 
+  const filterId = useId();
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -55,7 +68,7 @@ export function TangleApp() {
     }, 3200);
   }, []);
 
-  // Fetch initial data
+  // Fetch initial data from server
   useEffect(() => {
     async function loadData() {
       try {
@@ -97,6 +110,8 @@ export function TangleApp() {
     previousCrossingsRef.current = newLvl.initialCrossings;
     setDraggingNodeId(null);
     setSelectedNodeId(null);
+    setShowTensionHint(false);
+    setSparks([]);
     setShowArchiveModal(false);
   }, []);
 
@@ -106,6 +121,40 @@ export function TangleApp() {
   }, [nodes, level.edges]);
 
   const hasWon = evaluation.crossingsCount === 0;
+
+  // Nodes map for O(1) edge lookup
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    for (const n of nodes) {
+      map.set(n.id, n);
+    }
+    return map;
+  }, [nodes]);
+
+  // Tension hotspot calculation: which node is connected to the most crossing edges?
+  const hotNodeId = useMemo(() => {
+    if (!showTensionHint || evaluation.crossingsCount === 0) return null;
+
+    const crossingEdgeSet = evaluation.edgeCrossingMap;
+    const nodeScores = new Map<string, number>();
+
+    for (const edge of level.edges) {
+      if (crossingEdgeSet.has(edge.id)) {
+        nodeScores.set(edge.source, (nodeScores.get(edge.source) ?? 0) + 1);
+        nodeScores.set(edge.target, (nodeScores.get(edge.target) ?? 0) + 1);
+      }
+    }
+
+    let bestId: string | null = null;
+    let maxCrossingCount = 0;
+    for (const [id, count] of nodeScores.entries()) {
+      if (count > maxCrossingCount) {
+        maxCrossingCount = count;
+        bestId = id;
+      }
+    }
+    return bestId;
+  }, [showTensionHint, evaluation.crossingsCount, evaluation.edgeCrossingMap, level.edges]);
 
   // Submit score on untangle
   const submitSolution = useCallback(
@@ -154,7 +203,31 @@ export function TangleApp() {
     }
   }, [hasWon, moveCount, submitSolution]);
 
-  // Pointer Drag & Drop Handlers
+  // Spawn visual sparks
+  const triggerSparks = useCallback((cx: number, cy: number) => {
+    const count = 10;
+    const newSparks: Spark[] = [];
+    const baseId = Date.now();
+
+    for (let i = 0; i < count; i++) {
+      const angle = (2 * Math.PI * i) / count + (Math.random() * 0.4 - 0.2);
+      const speed = 12 + Math.random() * 18;
+      newSparks.push({
+        id: baseId + i,
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+      });
+    }
+
+    setSparks((prev) => [...prev, ...newSparks]);
+    setTimeout(() => {
+      setSparks((prev) => prev.filter((s) => !newSparks.some((ns) => ns.id === s.id)));
+    }, 450);
+  }, []);
+
+  // Pointer Drag Handlers
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<SVGGElement>, nodeId: string) => {
       if (hasWon) return;
@@ -170,7 +243,7 @@ export function TangleApp() {
       tangleSounds.playGrab();
 
       try {
-        (e.target as Element).setPointerCapture(e.pointerId);
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
       } catch {
         // Fallback
       }
@@ -186,8 +259,9 @@ export function TangleApp() {
       const rawX = (e.clientX - rect.left) / rect.width;
       const rawY = (e.clientY - rect.top) / rect.height;
 
-      const clampedX = Math.max(0.1, Math.min(0.9, rawX));
-      const clampedY = Math.max(0.1, Math.min(0.9, rawY));
+      // Restrict pins within comfortable interior margin
+      const clampedX = Math.max(0.08, Math.min(0.92, rawX));
+      const clampedY = Math.max(0.08, Math.min(0.92, rawY));
 
       setNodes((prev) =>
         prev.map((n) => (n.id === draggingNodeId ? { ...n, x: clampedX, y: clampedY } : n))
@@ -209,7 +283,7 @@ export function TangleApp() {
       const currentNode = nodes.find((n) => n.id === draggingNodeId);
       const startPos = dragStartPosRef.current;
 
-      // Only count as a move if position changed meaningfully (> 2%)
+      // Only count as a move if position changed meaningfully (> 2% of board)
       if (currentNode && startPos) {
         const dx = currentNode.x - startPos.x;
         const dy = currentNode.y - startPos.y;
@@ -228,6 +302,7 @@ export function TangleApp() {
 
           if (evaluation.crossingsCount < previousCrossingsRef.current) {
             tangleSounds.playUncross(evaluation.crossingsCount);
+            triggerSparks(currentNode.x * 1000, currentNode.y * 1000);
           }
           previousCrossingsRef.current = evaluation.crossingsCount;
         }
@@ -236,10 +311,55 @@ export function TangleApp() {
       setDraggingNodeId(null);
       dragStartPosRef.current = null;
     },
-    [draggingNodeId, evaluation.crossingsCount, nodes]
+    [draggingNodeId, evaluation.crossingsCount, nodes, triggerSparks]
   );
 
-  // Tap-to-move fallback for keyboard or non-drag pointers
+  // Keyboard navigation & accessibility
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, nodeId: string) => {
+      if (hasWon) return;
+
+      const step = e.shiftKey ? 0.05 : 0.02;
+      let dx = 0;
+      let dy = 0;
+
+      if (e.key === 'ArrowUp' || e.key === 'w') dy = -step;
+      else if (e.key === 'ArrowDown' || e.key === 's') dy = step;
+      else if (e.key === 'ArrowLeft' || e.key === 'a') dx = -step;
+      else if (e.key === 'ArrowRight' || e.key === 'd') dx = step;
+      else if (e.key === 'Escape') {
+        setSelectedNodeId(null);
+        return;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+
+      const target = nodes.find((n) => n.id === nodeId);
+      if (!target) return;
+
+      const newX = Math.max(0.08, Math.min(0.92, target.x + dx));
+      const newY = Math.max(0.08, Math.min(0.92, target.y + dy));
+
+      // Push current to undo
+      setUndoStack((prev) => [...prev, nodes.map((n) => ({ ...n }))]);
+      setNodes((prev) =>
+        prev.map((n) => (n.id === nodeId ? { ...n, x: newX, y: newY } : n))
+      );
+      setMoveCount((c) => c + 1);
+      tangleSounds.playDrop();
+
+      if (evaluation.crossingsCount < previousCrossingsRef.current) {
+        tangleSounds.playUncross(evaluation.crossingsCount);
+        triggerSparks(newX * 1000, newY * 1000);
+      }
+      previousCrossingsRef.current = evaluation.crossingsCount;
+    },
+    [evaluation.crossingsCount, hasWon, nodes, triggerSparks]
+  );
+
+  // Tap-to-move fallback: clicking board moves the selected pin
   const handleBoardClick = useCallback(
     (e: React.MouseEvent) => {
       if (hasWon || !selectedNodeId || !containerRef.current) return;
@@ -248,19 +368,28 @@ export function TangleApp() {
       const rawX = (e.clientX - rect.left) / rect.width;
       const rawY = (e.clientY - rect.top) / rect.height;
 
-      const clampedX = Math.max(0.1, Math.min(0.9, rawX));
-      const clampedY = Math.max(0.1, Math.min(0.9, rawY));
+      const clampedX = Math.max(0.08, Math.min(0.92, rawX));
+      const clampedY = Math.max(0.08, Math.min(0.92, rawY));
 
-      // Push current to undo
+      const currentNode = nodes.find((n) => n.id === selectedNodeId);
+      if (!currentNode) return;
+
+      // Push to undo stack
       setUndoStack((prev) => [...prev, nodes.map((n) => ({ ...n }))]);
       setNodes((prev) =>
         prev.map((n) => (n.id === selectedNodeId ? { ...n, x: clampedX, y: clampedY } : n))
       );
       setMoveCount((c) => c + 1);
       tangleSounds.playDrop();
+
+      if (evaluation.crossingsCount < previousCrossingsRef.current) {
+        tangleSounds.playUncross(evaluation.crossingsCount);
+        triggerSparks(clampedX * 1000, clampedY * 1000);
+      }
+      previousCrossingsRef.current = evaluation.crossingsCount;
       setSelectedNodeId(null);
     },
-    [hasWon, nodes, selectedNodeId]
+    [evaluation.crossingsCount, hasWon, nodes, selectedNodeId, triggerSparks]
   );
 
   // Undo move
@@ -285,7 +414,19 @@ export function TangleApp() {
     previousCrossingsRef.current = level.initialCrossings;
     setDraggingNodeId(null);
     setSelectedNodeId(null);
+    setShowTensionHint(false);
   }, [level]);
+
+  // Tension hint toggle
+  const toggleTensionHint = useCallback(() => {
+    setShowTensionHint((prev) => {
+      const next = !prev;
+      if (next) {
+        showToast('Highlighted pin connects to the most crossed threads');
+      }
+      return next;
+    });
+  }, [showToast]);
 
   // Sound toggle
   const toggleSound = useCallback(() => {
@@ -331,14 +472,6 @@ export function TangleApp() {
       });
   }, [stars, currentDay, moveCount, level.parMoves, level.initialCrossings, score, currentStreak, showToast]);
 
-  const nodeMap = useMemo(() => {
-    const map = new Map<string, GraphNode>();
-    for (const n of nodes) {
-      map.set(n.id, n);
-    }
-    return map;
-  }, [nodes]);
-
   return (
     <main className="tangle-app">
       {/* Toast */}
@@ -358,7 +491,21 @@ export function TangleApp() {
             aria-label="Toggle sound"
             title="Toggle sound"
           >
-            {isMuted ? '🔇' : '🔊'}
+            {isMuted ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23" />
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            )}
           </button>
 
           <button
@@ -367,7 +514,11 @@ export function TangleApp() {
             aria-label="How to play"
             title="How to play"
           >
-            ?
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
           </button>
 
           <button
@@ -376,7 +527,11 @@ export function TangleApp() {
             aria-label="Records & streaks"
             title="Records & streaks"
           >
-            ≡
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
           </button>
 
           <button
@@ -385,7 +540,12 @@ export function TangleApp() {
             aria-label="Past knots"
             title="Past knots"
           >
-            📅
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
           </button>
 
           <span className="daily-label">#{currentDay.toString().padStart(3, '0')}</span>
@@ -425,7 +585,24 @@ export function TangleApp() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
+        <span className="corner-crosshair corner-tl">+</span>
+        <span className="corner-crosshair corner-tr">+</span>
+        <span className="corner-crosshair corner-bl">+</span>
+        <span className="corner-crosshair corner-br">+</span>
+
         <svg className="tangle-svg" viewBox="0 0 1000 1000">
+          <defs>
+            <radialGradient id="pin-gradient" cx="35%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#f5f7fa" />
+              <stop offset="50%" stopColor="#c5d0dc" />
+              <stop offset="100%" stopColor="#697787" />
+            </radialGradient>
+            <filter id={`knot-glow-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
           {/* Edges / Threads */}
           {level.edges.map((edge) => {
             const p1 = nodeMap.get(edge.source);
@@ -433,6 +610,11 @@ export function TangleApp() {
             if (!p1 || !p2) return null;
 
             const isTension = evaluation.edgeCrossingMap.has(edge.id);
+            const lineClass = hasWon
+              ? 'thread-line thread-solved'
+              : isTension
+              ? 'thread-line thread-tension'
+              : 'thread-line thread-clear';
 
             return (
               <line
@@ -441,38 +623,70 @@ export function TangleApp() {
                 y1={p1.y * 1000}
                 x2={p2.x * 1000}
                 y2={p2.y * 1000}
-                className={`thread-line ${isTension ? 'thread-tension' : 'thread-clear'}`}
+                className={lineClass}
               />
             );
           })}
 
           {/* Intersection Points */}
-          {evaluation.crossingPoints.map((pt, idx) => (
+          {!hasWon &&
+            evaluation.crossingPoints.map((pt, idx) => (
+              <g key={`cross-${idx}`} transform={`translate(${pt.x * 1000}, ${pt.y * 1000})`}>
+                <circle r={4.5} className="crossing-marker" />
+                <line x1={-3} y1={0} x2={3} y2={0} stroke="#ffffff" strokeWidth={1} strokeOpacity={0.8} />
+                <line x1={0} y1={-3} x2={0} y2={3} stroke="#ffffff" strokeWidth={1} strokeOpacity={0.8} />
+              </g>
+            ))}
+
+          {/* Sparks */}
+          {sparks.map((spark) => (
             <circle
-              key={`cross-${idx}`}
-              cx={pt.x * 1000}
-              cy={pt.y * 1000}
-              r={4}
-              className="crossing-indicator"
+              key={spark.id}
+              cx={spark.x + spark.vx}
+              cy={spark.y + spark.vy}
+              r={3}
+              className="spark-particle"
             />
           ))}
 
-          {/* Nodes (Pins) */}
+          {/* Nodes (Brass / Titanium Drafting Pins) */}
           {nodes.map((node) => {
             const cx = node.x * 1000;
             const cy = node.y * 1000;
             const isDragging = draggingNodeId === node.id;
             const isSelected = selectedNodeId === node.id;
+            const isHot = hotNodeId === node.id;
 
             return (
               <g
                 key={node.id}
-                className={`pin-node ${isDragging || isSelected ? 'pin-active' : ''}`}
+                className={`pin-node ${isDragging ? 'pin-dragging' : ''} ${isSelected ? 'pin-selected' : ''} ${isHot ? 'pin-tension-hot' : ''}`}
                 onPointerDown={(e) => handlePointerDown(e, node.id)}
+                tabIndex={0}
+                role="button"
+                aria-label={`Pin ${node.id}`}
+                onKeyDown={(e) => handleKeyDown(e, node.id)}
               >
-                <circle cx={cx} cy={cy + 4} r={14} className="pin-shadow" />
-                <circle cx={cx} cy={cy} r={13} className="pin-body" />
-                <circle cx={cx} cy={cy} r={4} className="pin-core" />
+                {/* 32px invisible touch target for finger tap accessibility */}
+                <circle cx={cx} cy={cy} r={32} className="pin-touch-target" />
+
+                {/* Cast Shadow */}
+                <ellipse
+                  cx={cx + (isDragging ? 4 : 2)}
+                  cy={cy + (isDragging ? 9 : 4)}
+                  rx={15}
+                  ry={10}
+                  className="pin-cast-shadow"
+                />
+
+                {/* Milled Outer Bezel */}
+                <circle cx={cx} cy={cy} r={14} className="pin-bezel" />
+
+                {/* Metallic Top Cap */}
+                <circle cx={cx} cy={cy} r={10.5} className="pin-cap" />
+
+                {/* Core Rivet */}
+                <circle cx={cx} cy={cy} r={3.5} className="pin-core-rivet" />
               </g>
             );
           })}
@@ -485,12 +699,34 @@ export function TangleApp() {
           className="action-btn"
           onClick={handleUndo}
           disabled={undoStack.length === 0 || hasWon}
+          title="Revert last move"
         >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
           <span>Undo ({undoStack.length})</span>
         </button>
 
-        <button className="action-btn" onClick={handleReset}>
-          <span>Reset knot</span>
+        <button
+          className={`action-btn ${showTensionHint ? 'active-hint' : ''}`}
+          onClick={toggleTensionHint}
+          disabled={hasWon || evaluation.crossingsCount === 0}
+          title="Highlight the pin connecting the most crossings"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span>{showTensionHint ? 'Hide hint' : 'Tension hint'}</span>
+        </button>
+
+        <button className="action-btn" onClick={handleReset} title="Reset knot to initial state">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+          <span>Reset</span>
         </button>
       </div>
 
@@ -508,9 +744,15 @@ export function TangleApp() {
             Solved in {moveCount} moves with zero intersecting lines. Par target was {level.parMoves} moves.
           </p>
 
-          <button className="primary-btn" onClick={handleShare}>
-            Share record to Reddit comments
-          </button>
+          <div className="result-actions">
+            <button className="primary-btn" onClick={handleShare}>
+              Share record to Reddit comments
+            </button>
+
+            <button className="secondary-link-btn" onClick={() => setShowArchiveModal(true)}>
+              Untangle another past knot →
+            </button>
+          </div>
         </section>
       )}
 
@@ -525,16 +767,17 @@ export function TangleApp() {
               </button>
             </div>
             <p>
-              Tangle is a daily knot untangling puzzle based on planar graph theory.
+              Tangle is a daily knot untangling puzzle grounded in planar graph theory.
             </p>
             <p>
-              Every knot begins tangled with intersecting threads. Drag the brass pins across the board until{' '}
-              <strong>no lines cross</strong>.
+              Every knot begins with intersecting threads. Drag the drafting pins across the board until{' '}
+              <strong>zero lines cross</strong>.
             </p>
             <p>
-              • Dashed amber threads indicate active tension (crossing).<br />
-              • Solid silver threads are clear.<br />
-              • Beat the Par move target for 3 stars.
+              • <strong>Dashed amber threads</strong> indicate active crossings.<br />
+              • <strong>Solid silver threads</strong> are clear of intersections.<br />
+              • <strong>Tension hint</strong> highlights the pin tied to the most crossings.<br />
+              • Untangle within <strong>Par moves</strong> to earn 3 stars.
             </p>
           </div>
         </div>

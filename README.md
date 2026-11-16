@@ -10,7 +10,7 @@
 - **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 - **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-- **Deployed Version:** `v0.0.5` (Active on `r/windward_daily_dev`)
+- **Deployed Version:** `v0.0.6` (Active on `r/windward_daily_dev`)
 
 ---
 
@@ -21,10 +21,13 @@ Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grou
 * **The Knot:** Every day at 00:00 UTC, a new scrambled planar graph unlocks with 6 to 9 brass pins and interconnected silk threads.
 * **The Goal:** Untangle the threads until **zero lines cross**.
 * **Direct Tactile Drag:** Touch/click and drag any brass pin across the drafting board. As you drag, intersecting threads are calculated in real time using 2D cross-product line intersection math.
+* **Tactile Multi-Layer Pins:** Milled outer bezel, metallic cap gradient, center rivet, and an enlarged 32px touch-hit hitbox for zero-miss mobile drag.
 * **Real-Time Visual & Auditory Feedback:**
   * **Tension Lines:** Crossed lines appear dashed with warm amber tension and orange intersection nodes.
   * **Cleared Lines:** Uncrossed lines immediately turn solid silver/bone white.
-  * **Acoustic Feedback:** Procedural Web Audio synthesizer plays a quiet tactile peg lift on grab, soft placement tap on release, rising metallic pings as crossings decrease, and a serene harmonic C Major 7 chord upon full solve.
+  * **Spark Bursts:** Disentangling an intersection triggers a crisp burst of spark particles.
+  * **Tension Hint:** A tactical button highlights the pin connected to the most crossed threads, offering mathematical intuition without spoiling the solution.
+  * **Acoustic Feedback:** Procedural Web Audio synthesizer plays a tactile peg lift on grab, soft placement tap on release, ascending pentatonic scale chimes as crossings decrease, and a radiant D Major 9 chord upon full solve.
 
 ---
 
@@ -36,6 +39,7 @@ Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grou
   * **Zero AI-slop tropes:** No purple gradients, no glowing blobs, no emoji decorations in headings or buttons, no gradient text, no uppercase tracked labels.
   * Clean sentence case typography with `@fontsource-variable/geist`.
   * Responsive viewport budgeting with `touch-action: none` ensuring smooth 60 FPS mobile dragging without page scrolling.
+  * Dual input support: zero-latency touch drag + keyboard arrow nudging for accessibility.
 
 ### 2. Guaranteed Solvability & Par Moves
 * Every daily knot is mathematically generated from a guaranteed planar embedding and scrambled with a deterministic Mulberry32 PRNG seed.

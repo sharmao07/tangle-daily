@@ -14,7 +14,7 @@
 ### App Links & Submissions Required
 * **Reddit Developer App Listing:** [https://developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 * **Subreddit Community & Demo Post:** [https://www.reddit.com/r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-* **Installed Version:** `v0.0.5` (Active on `r/windward_daily_dev`)
+* **Installed Version:** `v0.0.6` (Active on `r/windward_daily_dev`)
 
 ---
 
@@ -28,8 +28,11 @@ Tangle draws inspiration from classic string-and-pin physical puzzles. It offers
 ### What It Does
 * **Daily Planar Knot:** Every calendar day at 00:00 UTC, a fresh scrambled planar knot unlocks for all Reddit players worldwide.
 * **Direct Tactile Drag-and-Drop:** Intuitive pointer controls with pointer capture: grab any brass pin with finger or mouse, drag it across the board, and watch the lines flex and uncross in real time at 60 FPS.
+* **Enlarged Touch Hitboxes:** Pins feature 32px touch hitboxes with `touch-action: none` to guarantee zero-miss dragging on mobile Reddit webviews without triggering page scrolling.
 * **Real-Time Cross-Product Geometry:** Computes line intersections in real time. Crossed lines show warm dashed amber tension; cleared lines snap to solid bone silver.
-* **Procedural Soundscape:** Web Audio API delivers quiet wooden peg clicks on grab/drop, rising metallic chimes as intersections decrease, and a serene harmonic C-Major-7 chord on zero crossings without downloading external sound assets.
+* **Spark Particle Bursts:** Disentangling an intersection triggers a delightful burst of spark particles.
+* **Mathematical Tension Hint:** Highlights the pin connected to the greatest number of crossing threads, offering intuition without spoiling the solution.
+* **Procedural Soundscape:** Web Audio API delivers quiet wooden peg clicks on grab/drop, ascending pentatonic scale chimes as intersections decrease, and a radiant D Major 9 chord on zero crossings without downloading external sound assets.
 * **Community Ledger:** Uses Devvit Redis to track collective daily totals of knots untangled by the Reddit community.
 * **Spoiler-Free Reddit Comment Sharing:** One-click copy formats a clean result designed for posting in Reddit discussion threads.
 * **Streaks, Records & Archive:** Tracks personal streaks and provides a 7-day archive for practice and replayability.
@@ -42,6 +45,7 @@ Tangle draws inspiration from classic string-and-pin physical puzzles. It offers
 * **Planar Graph Theory Engine:** Mathematical generation guaranteeing that every puzzle is planar (proven to have a 0-crossing solution), then scrambled using a deterministic Mulberry32 PRNG seed.
 * **Unslopped UI System:** Built adhering to the CC-BY-4.0 `unslop` design guidelines—quiet graphite neutral ramp, 4px grid spacing, sentence case typography, zero emoji decoration in chrome, and zero purple/glowing gradients.
 * **Touch-Action None & Pointer Capture:** Eliminates touch latency and prevents page scrolling while dragging on mobile Reddit webviews.
+* **Accessibility:** Full keyboard arrow navigation to nudge pins and Tab focus cycling.
 
 ---
 
