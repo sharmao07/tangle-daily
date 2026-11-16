@@ -27,7 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "devvit": "0.15.3",
-    "hono": "4.13.17",
+    "hono": "4.13.19",
     "lucide-react": "^1.72.0",
     "radix-ui": "^1.8.1",
     "react": "19.3.1",
