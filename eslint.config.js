@@ -28,6 +28,7 @@ export default defineConfig([
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['src/shared/**/*.{ts,tsx,mjs,cjs,js}'],
+    ignores: ['src/shared/**/*.test.ts'],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.browser,
@@ -88,6 +89,7 @@ export default defineConfig([
       '**/node_modules/**',
       '**/dist/**',
       '**/build/**',
+      '**/*.test.ts',
       'eslint.config.js',
       '**/vite.config.ts',
       'devvit.config.ts',
