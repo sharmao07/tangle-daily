@@ -2,11 +2,11 @@ import { Hono } from 'hono';
 import { context, redis, reddit } from '@devvit/web/server';
 import {
   calculateDayNumber,
-  generateDailyLevel,
+  getChamberForDay,
   type DailyCommunityStats,
-  type DailyInfoResponse,
-  type SubmitFlightRequest,
-  type SubmitFlightResponse,
+  type PrismInitResponse,
+  type SubmitPrismRequest,
+  type SubmitPrismResponse,
   type UserStats,
 } from '../../shared/api';
 
@@ -17,31 +17,26 @@ type ErrorResponse = {
 
 export const api = new Hono();
 
-// Helper to generate spoiler-free flight grid for Reddit comments
-function generateShareText(
+function generatePrismShareText(
   dayNumber: number,
   won: boolean,
-  birdsSaved: number,
-  gustsLeft: number,
-  checkpoints: number,
-  score: number,
   moves: number,
+  parMoves: number,
+  score: number,
+  streak: number,
   subreddit: string
 ): string {
-  const stars = won ? (birdsSaved === 5 && checkpoints === 2 ? '⭐⭐⭐' : birdsSaved >= 4 ? '⭐⭐' : '⭐') : '❌';
+  const stars = moves <= parMoves ? '⭐⭐⭐' : moves <= parMoves + 2 ? '⭐⭐' : '⭐';
   const paddedDay = dayNumber.toString().padStart(3, '0');
-  const flockText = won ? `${birdsSaved}/5 flock saved` : `0/5 flock lost in storm`;
-  const gustText = `${gustsLeft} gusts left (${moves} moves)`;
-  const checkText = `${checkpoints}/2 waypoints`;
 
   return [
-    `🕊️ WINDWARD #${paddedDay} ${stars}`,
-    `${flockText} · ${checkText}`,
-    `${gustText} · Score: ${score.toLocaleString()}`,
+    `💎 PRISM #${paddedDay} ${won ? stars : '❌'}`,
+    won ? `Awakened in ${moves} moves (Par: ${parMoves})` : `Chamber unresolved (${moves} moves)`,
+    `Score: ${score.toLocaleString()}${streak > 0 ? ` · Streak: ${streak} 🔥` : ''}`,
     '',
-    won ? '🟩 ↗ 🟩 ✧ 🟩 ⌂' : '🟩 ϟ 🟥 ── ✖',
+    won ? '🔴 ➔ 🪞 ➔ 💎 (Awakened)' : '🔴 ➔ ⬛ ➔ ✖',
     '',
-    `Fly today on r/${subreddit}!`,
+    `Solve today on r/${subreddit}!`,
   ].join('\n');
 }
 
@@ -49,7 +44,7 @@ api.get('/init', async (c) => {
   const { postId } = context;
 
   try {
-    const username = (await reddit.getCurrentUsername()) ?? 'wanderer';
+    const username = (await reddit.getCurrentUsername()) ?? 'optician';
     const dayNumber = calculateDayNumber();
     const dateString = new Date().toLocaleDateString('en-US', {
       month: 'short',
@@ -57,62 +52,57 @@ api.get('/init', async (c) => {
       year: 'numeric',
     });
 
-    const level = generateDailyLevel(dayNumber);
+    const level = getChamberForDay(dayNumber);
 
-    // Fetch daily community stats from Redis
-    const [flightsRaw, birdsRaw, winsRaw] = await Promise.all([
-      redis.get(`daily:${dayNumber}:flights`).catch(() => null),
-      redis.get(`daily:${dayNumber}:birds`).catch(() => null),
-      redis.get(`daily:${dayNumber}:wins`).catch(() => null),
+    // Fetch Redis community stats
+    const [solvesRaw, crystalsRaw] = await Promise.all([
+      redis.get(`prism:daily:${dayNumber}:solves`).catch(() => null),
+      redis.get(`prism:daily:${dayNumber}:crystals`).catch(() => null),
     ]);
 
-    const totalFlights = flightsRaw ? parseInt(flightsRaw, 10) : 0;
-    const totalBirdsSaved = birdsRaw ? parseInt(birdsRaw, 10) : 0;
-    const totalWins = winsRaw ? parseInt(winsRaw, 10) : 0;
-    const survivalRate = totalFlights > 0 ? Math.round((totalWins / totalFlights) * 100) : 100;
+    const totalSolves = solvesRaw ? parseInt(solvesRaw, 10) : 0;
+    const totalCrystalsAwakened = crystalsRaw ? parseInt(crystalsRaw, 10) : 0;
+    const averageMoves = level.parMoves;
 
     const communityStats: DailyCommunityStats = {
-      totalFlights,
-      totalBirdsSaved,
-      survivalRate,
+      totalSolves,
+      totalCrystalsAwakened,
+      averageMoves,
     };
 
     // Fetch user stats
-    const userStatsRaw = await redis.get(`user:${username}:stats`).catch(() => null);
+    const userStatsRaw = await redis.get(`prism:user:${username}:stats`).catch(() => null);
     let userStats: UserStats = {
       username,
       currentStreak: 0,
       maxStreak: 0,
-      totalFlights: 0,
-      totalBirdsSaved: 0,
+      totalChambersAwakened: 0,
       todayCompleted: false,
     };
 
     if (userStatsRaw) {
       try {
-        const parsed = JSON.parse(userStatsRaw);
-        userStats = { ...userStats, ...parsed };
+        userStats = { ...userStats, ...JSON.parse(userStatsRaw) };
       } catch (e) {
-        console.error('Failed to parse user stats:', e);
+        console.error('Error parsing user stats:', e);
       }
     }
 
-    // Check if user played today
-    const userTodayKey = `user:${username}:day:${dayNumber}`;
-    const userTodayRaw = await redis.get(userTodayKey).catch(() => null);
-    if (userTodayRaw) {
+    // Check if played today
+    const todayRecord = await redis.get(`prism:user:${username}:day:${dayNumber}`).catch(() => null);
+    if (todayRecord) {
       try {
-        const todayData = JSON.parse(userTodayRaw);
+        const parsed = JSON.parse(todayRecord);
         userStats.todayCompleted = true;
-        userStats.todayScore = todayData.score;
-        userStats.todayStars = todayData.stars;
+        userStats.todayScore = parsed.score;
+        userStats.todayMoves = parsed.moves;
       } catch (e) {
-        console.error('Failed to parse today data:', e);
+        console.error('Error parsing today record:', e);
       }
     }
 
-    return c.json<DailyInfoResponse>({
-      type: 'daily_info',
+    return c.json<PrismInitResponse>({
+      type: 'prism_init',
       postId: postId ?? 'unknown',
       username,
       dayNumber,
@@ -122,16 +112,18 @@ api.get('/init', async (c) => {
       userStats,
     });
   } catch (error) {
-    console.error('API Init Error:', error);
-    let errorMessage = 'Failed to load Windward daily flight';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    return c.json<ErrorResponse>({ status: 'error', message: errorMessage }, 500);
+    console.error('Prism API Init Error:', error);
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to initialize chamber',
+      },
+      500
+    );
   }
 });
 
-api.get('/level/:dayNumber', async (c) => {
+api.get('/chamber/:dayNumber', async (c) => {
   const dayParam = c.req.param('dayNumber');
   const dayNumber = parseInt(dayParam, 10);
 
@@ -139,57 +131,36 @@ api.get('/level/:dayNumber', async (c) => {
     return c.json<ErrorResponse>({ status: 'error', message: 'Invalid day number' }, 400);
   }
 
-  const level = generateDailyLevel(dayNumber);
-
-  // Community stats for that day
-  const [flightsRaw, birdsRaw, winsRaw] = await Promise.all([
-    redis.get(`daily:${dayNumber}:flights`).catch(() => null),
-    redis.get(`daily:${dayNumber}:birds`).catch(() => null),
-    redis.get(`daily:${dayNumber}:wins`).catch(() => null),
-  ]);
-
-  const totalFlights = flightsRaw ? parseInt(flightsRaw, 10) : 0;
-  const totalBirdsSaved = birdsRaw ? parseInt(birdsRaw, 10) : 0;
-  const totalWins = winsRaw ? parseInt(winsRaw, 10) : 0;
-  const survivalRate = totalFlights > 0 ? Math.round((totalWins / totalFlights) * 100) : 100;
-
+  const level = getChamberForDay(dayNumber);
   return c.json({
     status: 'success',
     dayNumber,
     level,
-    communityStats: {
-      totalFlights,
-      totalBirdsSaved,
-      survivalRate,
-    },
   });
 });
 
 api.post('/complete', async (c) => {
   try {
-    const body = await c.req.json<SubmitFlightRequest>();
-    const username = (await reddit.getCurrentUsername()) ?? 'wanderer';
-    const subreddit = context.subredditName ?? 'windward_daily';
+    const body = await c.req.json<SubmitPrismRequest>();
+    const username = (await reddit.getCurrentUsername()) ?? 'optician';
+    const subreddit = context.subredditName ?? 'prism_daily';
 
-    const { dayNumber, won, birdsSaved, gustsLeft, checkpoints, moves, score } = body;
+    const { dayNumber, won, moves, parMoves, crystalsAwakened, score } = body;
 
-    // Update community totals in Redis
+    // Increment community totals
     await Promise.all([
-      redis.incrBy(`daily:${dayNumber}:flights`, 1).catch(() => null),
-      redis.incrBy(`daily:${dayNumber}:birds`, Math.max(0, birdsSaved)).catch(() => null),
-      won ? redis.incrBy(`daily:${dayNumber}:wins`, 1).catch(() => null) : Promise.resolve(),
-      redis.incrBy('global:total_flights', 1).catch(() => null),
-      redis.incrBy('global:total_birds_saved', Math.max(0, birdsSaved)).catch(() => null),
+      won ? redis.incrBy(`prism:daily:${dayNumber}:solves`, 1).catch(() => null) : Promise.resolve(),
+      redis.incrBy(`prism:daily:${dayNumber}:crystals`, crystalsAwakened).catch(() => null),
+      redis.incrBy('prism:global:total_crystals', crystalsAwakened).catch(() => null),
     ]);
 
     // Read current user stats
-    const userStatsRaw = await redis.get(`user:${username}:stats`).catch(() => null);
+    const userStatsRaw = await redis.get(`prism:user:${username}:stats`).catch(() => null);
     let userStats: UserStats = {
       username,
       currentStreak: 0,
       maxStreak: 0,
-      totalFlights: 0,
-      totalBirdsSaved: 0,
+      totalChambersAwakened: 0,
       todayCompleted: false,
     };
 
@@ -201,70 +172,63 @@ api.post('/complete', async (c) => {
       }
     }
 
-    // Update streak logic
     let newStreak = userStats.currentStreak;
     if (won) {
       newStreak = (userStats.currentStreak || 0) + 1;
     }
     const maxStreak = Math.max(userStats.maxStreak || 0, newStreak);
-    const totalFlights = (userStats.totalFlights || 0) + 1;
-    const totalBirdsSaved = (userStats.totalBirdsSaved || 0) + Math.max(0, birdsSaved);
+    const totalChambersAwakened = (userStats.totalChambersAwakened || 0) + (won ? 1 : 0);
 
     const updatedUserStats: UserStats = {
       username,
       currentStreak: newStreak,
       maxStreak,
-      totalFlights,
-      totalBirdsSaved,
+      totalChambersAwakened,
       todayCompleted: true,
       todayScore: score,
-      todayStars: won ? (birdsSaved === 5 && checkpoints === 2 ? 3 : birdsSaved >= 4 ? 2 : 1) : 0,
+      todayMoves: moves,
     };
 
-    // Save updated user stats and today's flight record
     await Promise.all([
-      redis.set(`user:${username}:stats`, JSON.stringify(updatedUserStats)).catch(() => null),
+      redis.set(`prism:user:${username}:stats`, JSON.stringify(updatedUserStats)).catch(() => null),
       redis.set(
-        `user:${username}:day:${dayNumber}`,
+        `prism:user:${username}:day:${dayNumber}`,
         JSON.stringify({
           dayNumber,
           won,
-          birdsSaved,
+          moves,
           score,
-          stars: updatedUserStats.todayStars,
           completedAt: new Date().toISOString(),
         })
       ).catch(() => null),
     ]);
 
-    const communityBirdsTotal = await redis.get(`daily:${dayNumber}:birds`).catch(() => '0');
+    const communityTotalRaw = await redis.get('prism:global:total_crystals').catch(() => '0');
 
-    const shareText = generateShareText(
+    const shareText = generatePrismShareText(
       dayNumber,
       won,
-      birdsSaved,
-      gustsLeft,
-      checkpoints,
-      score,
       moves,
+      parMoves,
+      score,
+      newStreak,
       subreddit
     );
 
-    return c.json<SubmitFlightResponse>({
-      type: 'flight_submitted',
+    return c.json<SubmitPrismResponse>({
+      type: 'prism_submitted',
       success: true,
       dayNumber,
       newStreak,
-      totalBirdsSaved,
-      communityBirdsSaved: communityBirdsTotal ? parseInt(communityBirdsTotal, 10) : birdsSaved,
+      totalCrystalsAwakened: communityTotalRaw ? parseInt(communityTotalRaw, 10) : crystalsAwakened,
       shareText,
     });
   } catch (error) {
-    console.error('Error submitting flight:', error);
+    console.error('Error submitting chamber solution:', error);
     return c.json<ErrorResponse>(
       {
         status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to submit flight',
+        message: error instanceof Error ? error.message : 'Failed to submit solution',
       },
       500
     );

@@ -1,56 +1,60 @@
-# WINDWARD: A Daily Migration 🕊️
-### Reddit’s Game of the Day Hackathon Submission
+# PRISM: Daily Light & Color Synthesis 💎
+### Reddit’s Game of the Day Hackathon 2026 Submission
 
-> *"You don't control the birds. You control the wind."*
+> *"Bend light. Synthesize color. Awaken the ancient crystals."*
 
-**Windward** is a contemplative, handcrafted daily routing puzzle designed natively for Reddit using **Devvit Web** (React 19, TypeScript, Tailwind CSS 4, Hono, Devvit Redis, and Web Audio API).
+**PRISM** is a completely unique, handcrafted daily optical routing and additive color synthesis puzzle built natively for Reddit using **Devvit Web** (React 19, TypeScript, Tailwind CSS 4, Hono, Devvit Redis, and Web Audio API).
 
-- **App Name:** `windward-daily`
-- **Owner / Developer:** u/shaemaondc
+- **App Name / Slug:** `windward-daily` (Active on Developer Platform)
+- **App Title for Subreddit & Hackathon:** **PRISM: Daily Light Synthesis**
+- **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 - **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-- **Tech Stack:** Devvit Web, React 19, Hono, Tailwind CSS 4, Devvit Redis, Web Audio API
+- **Deployed Version:** `v0.0.4` (Active on `r/windward_daily_dev`)
 
 ---
 
-## 🎮 The Premise & Gameplay
+## 🎮 The Core Premise & Mechanics
 
-Every calendar day, a unique migratory flight corridor opens across a 7×7 topographic grid. Players direct prevailing wind gusts (**North, South, East, West**) to steer a vulnerable flock of 5 birds across mountainous barriers and dangerous turbulence toward their northern sanctuary nest.
+Every day at 00:00 UTC, an ancient optical chamber unlocks on Reddit. Laser emitters along the perimeter shoot primary light beams (**Red, Green, Blue**). Dormant crystals on the grid must be energized by specific **synthesized wavelengths**:
 
-### Key Elements:
-* **The Flock (`🕊️`):** Starts with 5 birds. Your mission is to bring as many home safely as possible.
-* **Wind Gusts (`💨`):** Limited gust budget per flight. Efficient routing is rewarded.
-* **Jet Streams (`↗`):** High-altitude currents that glide the flock an extra tile along their vector without spending an extra gust.
-* **Storm Cells (`ϟ`):** Severe low-pressure hazards that scatter 1 bird from the flock upon impact.
-* **Waypoints (`✧`):** Optional resting sanctuaries. Reaching both waypoints awards bonus points and 3-star par status.
-* **Sanctuary Nest (`⌂`):** The final destination tile. Reaching it completes the day's flight!
-* **Mountains (`◆`):** Impassable terrain ridges that block the wind.
+* **Primary Beams:** Red (`🔴`), Green (`🟢`), Blue (`🔵`)
+* **Secondary Synthesized Wavelengths:**
+  * **Violet (Magenta):** Red + Blue (`🟣`)
+  * **Amber (Yellow):** Red + Green (`🟡`)
+  * **Cyan:** Green + Blue (`🔵`)
+* **Tertiary Radiance (White):** Red + Green + Blue (`⚪`)
+
+### How to Play:
+1. **Inventory of Mirrors:** You are given 2–4 angle mirrors (`/` and `\`) each day.
+2. **Place & Rotate:** Tap a mirror in your inventory, then tap any empty cell on the grid to position it. Tap placed mirrors on the grid to rotate their reflective angle 90° in real time.
+3. **Additive Ray Tracing:** Lasers reflect and intersect across the grid with real-time SVG neon glow rendering.
+4. **Awaken the Crystals:** When the target crystal receives the required light combination, it pulses with celestial resonance!
 
 ---
 
 ## 🏆 Hackathon Alignment & Judging Criteria
 
 ### 1. Delightful UX & Artisanal Visual Craft
-* **Zero AI-slop aesthetic:** Handcrafted cartographic dark-sky palette, responsive viewport budgeting (zero clipping or awkward scrollbars on mobile or desktop feeds).
-* **Bespoke procedural sound design:** Built entirely with the Web Audio API—zero external audio assets, zero network latency. Includes gentle wind whooshes, crystal chord chimes for waypoints, thunder rumbles for storm cells, and pentatonic harp victory arpeggios. Includes 1-tap mute toggle.
-* **Intuitive Controls:** On-screen D-Pad, direct click/tap on adjacent board tiles, WASD and Arrow key keyboard shortcuts, and full **Undo Gust** (`Ctrl+Z`) support.
+* **Zero AI-slop aesthetic:** Bespoke obsidian chamber styling with glowing neon laser beams, realistic light bloom, and animated beam rings.
+* **Procedural Web Audio API:** Zero external audio assets, zero loading latency. Synthesizes tactile mirror rotation clicks, crystal resonance chimes (tuned to D5, E5, G5, A5), and a celestial E Major 9 victory chord. Includes a 1-tap mute toggle.
+* **Responsive Viewport Budgeting:** Specifically built to fit cleanly within Reddit's mobile feed and webview without vertical clipping or awkward scrollbars.
 
-### 2. Daily Content & Procedural Generator
-* **Deterministic Synchronized Puzzles:** Powered by a seeded Mulberry32 PRNG tied to the UTC calendar day number. Every player across Reddit encounters the exact same migration corridor each day.
-* **Guaranteed Solvability:** Automated pathfinding validation calculates par moves and allocates calibrated gust budgets.
-* **Flight Archive:** Players can revisit and practice the past 7 daily flights without waiting 24 hours.
+### 2. Calibrated Daily Content
+* **Deterministic Synchronized Puzzles:** Seeded by calendar day number so all Reddit players experience the exact same puzzle today.
+* **Curated Progression:** Handcrafted master chambers for introductory days, followed by calibrated procedural generation.
+* **Chamber Archive:** Players can revisit and practice the past 7 daily chambers without waiting 24 hours.
 
 ### 3. Native Reddit Community Integration
-* **Community Migration Ledger:** Devvit Redis tracks the collective total of birds safely guided home each day and community survival rate.
-* **Spoiler-Free Reddit Comment Card:** 1-click clipboard copy of formatted emoji flight results designed to spark lively subreddit discussion without giving away puzzle solutions:
+* **Community Lumens Awakened:** Devvit Redis tracks the collective count of crystals energized worldwide and daily solves.
+* **Spoiler-Free Reddit Comment Card:** 1-click clipboard copy of formatted emoji optical results designed for Reddit discussion threads:
   ```
-  🕊️ WINDWARD #042 ⭐⭐⭐
-  5/5 flock saved · 2/2 waypoints
-  4 gusts left (6 moves) · Score: 1,300
+  💎 PRISM #018 ⭐⭐⭐
+  Awakened in 2 moves (Par: 2)
+  🔴 ➔ 🪞 ➔ 💎 (Magenta)
+  Score: 1,500 · Streak: 5 🔥
 
-  🟩 ↗ 🟩 ✧ 🟩 ⌂
-
-  Fly today on r/windward_daily_dev!
+  Solve today on r/windward_daily_dev!
   ```
 * **Streaks & Records:** Redis persists daily consecutive completions, highest streak, and personal best records per Reddit username (`u/username`).
 
@@ -65,7 +69,7 @@ npm run test:types
 # Run ESLint
 npm run lint
 
-# Run Unit Tests (Seeded generator tests)
+# Run Unit Tests (Physics & level solver tests)
 npm run test:unit
 
 # Build Client & Server
@@ -73,16 +77,4 @@ npm run build
 
 # Deploy & Upload to Devvit
 npm run deploy
-
-# Start local Devvit playtest session
-npm run dev
 ```
-
----
-
-## 📜 Devpost Hackathon Submission Copy
-
-- **Submission Title:** Windward: A Daily Migration
-- **Short Pitch:** An atmospheric daily weather-routing puzzle for Reddit. You don't control the birds—you control the prevailing wind.
-- **Subreddit:** `r/windward_daily_dev`
-- **App Listing:** `https://developers.reddit.com/apps/windward-daily`

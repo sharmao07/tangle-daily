@@ -3,11 +3,11 @@ import './index.css';
 import { context, requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { calculateDayNumber } from '../shared/generator';
-import type { DailyInfoResponse } from '../shared/types';
+import { calculateDayNumber } from '../shared/prism-levels';
+import type { PrismInitResponse } from '../shared/prism-types';
 
 export const Splash = () => {
-  const [data, setData] = useState<DailyInfoResponse | null>(null);
+  const [data, setData] = useState<PrismInitResponse | null>(null);
 
   const fallbackDay = calculateDayNumber();
 
@@ -16,11 +16,11 @@ export const Splash = () => {
       try {
         const res = await fetch('/api/init');
         if (res.ok) {
-          const json = (await res.json()) as DailyInfoResponse;
+          const json = (await res.json()) as PrismInitResponse;
           setData(json);
         }
       } catch (err) {
-        console.error('Failed to load daily info:', err);
+        console.error('Failed to load PRISM daily info:', err);
       }
     }
     void loadInfo();
@@ -36,103 +36,104 @@ export const Splash = () => {
       year: 'numeric',
     });
 
-  const communityBirds = data?.communityStats?.totalBirdsSaved ?? 1420;
-  const survivalRate = data?.communityStats?.survivalRate ?? 89;
+  const communityCrystals = data?.communityStats?.totalCrystalsAwakened ?? 14820;
+  const totalSolves = data?.communityStats?.totalSolves ?? 3840;
   const streak = data?.userStats?.currentStreak ?? 0;
   const todayDone = data?.userStats?.todayCompleted ?? false;
 
   return (
-    <div className="windward-splash-container">
-      {/* Subtle atmospheric ambient glow */}
-      <div className="ambient-cloud ambient-cloud-1" />
-      <div className="ambient-cloud ambient-cloud-2" />
+    <div className="prism-splash-container">
+      {/* Laser glow streams in background */}
+      <div className="laser-streak laser-red" />
+      <div className="laser-streak laser-green" />
+      <div className="laser-streak laser-blue" />
 
       <div className="splash-content">
         {/* Top Header Badge */}
         <header className="splash-header">
           <div className="corridor-badge">
             <span className="pulsing-beacon" />
-            <span>DAILY FLIGHT #{paddedDay} · {dateString.toUpperCase()}</span>
+            <span>CHAMBER #{paddedDay} · {dateString.toUpperCase()}</span>
           </div>
 
           {streak > 0 && (
-            <div className="streak-badge" title="Daily Migration Streak">
+            <div className="streak-badge" title="Daily Optician Streak">
               <span>🔥</span>
               <span>{streak} DAY STREAK</span>
             </div>
           )}
         </header>
 
-        {/* Title & Tagline */}
+        {/* Hero Title */}
         <div className="splash-hero">
-          <div className="hero-icon-wrapper">
-            <span className="hero-bird">🕊️</span>
-            <span className="wind-swirl">💨</span>
+          <div className="prism-hero-icon">
+            <span className="crystal-core">💎</span>
+            <div className="beam-ring" />
           </div>
 
-          <h1 className="splash-title">WINDWARD</h1>
-          <p className="splash-subtitle">A DAILY MIGRATION PUZZLE</p>
+          <h1 className="splash-title">PRISM</h1>
+          <p className="splash-subtitle">A DAILY OPTICAL SYNTHESIS PUZZLE</p>
           <p className="splash-premise">
-            You don't control the birds. You control the wind.
+            Bend light. Synthesize color. Awaken the ancient crystals.
           </p>
         </div>
 
-        {/* Quick How to Play Pills */}
+        {/* 3 Step Visual Pills */}
         <div className="rules-preview">
           <div className="rule-pill">
-            <span className="rule-icon">💨</span>
+            <span className="rule-icon">🪞</span>
             <div className="rule-text">
-              <strong>Set the Wind</strong>
-              <small>N · S · E · W gusts</small>
+              <strong>Aim the Mirrors</strong>
+              <small>Reflect beams 90°</small>
             </div>
           </div>
 
           <div className="rule-pill">
-            <span className="rule-icon">↗</span>
+            <span className="rule-icon">🟣</span>
             <div className="rule-text">
-              <strong>Ride Currents</strong>
-              <small>Glides past obstacles</small>
+              <strong>Blend Colors</strong>
+              <small>R + B = Violet</small>
             </div>
           </div>
 
           <div className="rule-pill">
-            <span className="rule-icon">⌂</span>
+            <span className="rule-icon">💎</span>
             <div className="rule-text">
-              <strong>Reach Nest</strong>
-              <small>Protect the flock</small>
+              <strong>Awaken Crystals</strong>
+              <small>Energize target gems</small>
             </div>
           </div>
         </div>
 
-        {/* Community Ledger Bar */}
+        {/* Community Ledger */}
         <div className="community-banner">
           <div className="community-stat">
-            <span className="community-num">{communityBirds.toLocaleString()}</span>
-            <span className="community-label">Birds Saved Today</span>
+            <span className="community-num">{communityCrystals.toLocaleString()}</span>
+            <span className="community-label">Crystals Awakened Today</span>
           </div>
           <div className="community-divider" />
           <div className="community-stat">
-            <span className="community-num">{survivalRate}%</span>
-            <span className="community-label">Survival Rate</span>
+            <span className="community-num">{totalSolves.toLocaleString()}</span>
+            <span className="community-label">Chambers Solved</span>
           </div>
         </div>
 
-        {/* Start Button */}
+        {/* Call to action button */}
         <div className="splash-cta-container">
           <button
             className="splash-play-btn"
             onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
             autoFocus
           >
-            <span>{todayDone ? 'PLAY AGAIN OR PRACTICE ↗' : "BEGIN TODAY'S FLIGHT ↗"}</span>
+            <span>{todayDone ? 'REPLAY OR PRACTICE ↗' : 'ENTER OPTICAL CHAMBER ↗'}</span>
           </button>
         </div>
 
-        {/* Footer info */}
+        {/* Footer */}
         <footer className="splash-footer">
-          <span>{context.username ? `Pilot: u/${context.username}` : 'Bite-sized daily puzzle'}</span>
+          <span>{context.username ? `Optician: u/${context.username}` : 'Bite-sized daily puzzle'}</span>
           <span>·</span>
-          <span>r/{context.subredditName ?? 'windward_daily'}</span>
+          <span>r/{context.subredditName ?? 'windward_daily_dev'}</span>
         </footer>
       </div>
     </div>

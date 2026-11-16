@@ -1452,3 +1452,361 @@ button:focus-visible {
   color: #819b96;
 }
 
+
+/* ============================================================
+   PRISM (LIGHT & COLOR SYNTHESIS) STYLES
+   ============================================================ */
+
+.prism-app {
+  width: 100%;
+  max-width: 540px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px clamp(12px, 4vw, 24px) 24px;
+  color: #edf5f1;
+}
+
+.prism-splash-container {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 20%, #11202e 0%, #060a10 75%);
+  color: #edf5f1;
+}
+
+.laser-streak {
+  position: absolute;
+  height: 2px;
+  filter: blur(12px);
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.laser-red {
+  top: 15%;
+  left: -20%;
+  width: 140%;
+  background: #ff2e54;
+  box-shadow: 0 0 25px #ff2e54;
+  transform: rotate(-12deg);
+}
+
+.laser-green {
+  top: 50%;
+  left: -20%;
+  width: 140%;
+  background: #00e676;
+  box-shadow: 0 0 25px #00e676;
+  transform: rotate(24deg);
+}
+
+.laser-blue {
+  bottom: 20%;
+  left: -20%;
+  width: 140%;
+  background: #2979ff;
+  box-shadow: 0 0 25px #2979ff;
+  transform: rotate(-8deg);
+}
+
+.prism-hero-icon {
+  position: relative;
+  display: inline-flex;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3d6072;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #162c3b, #0c1a24);
+  box-shadow: 0 10px 30px #00000080;
+}
+
+.crystal-core {
+  font-size: 38px;
+  filter: drop-shadow(0 0 16px #00e5ffaa);
+}
+
+.beam-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 28px;
+  border: 1px dashed #00e5ff60;
+  animation: ring-rotate 14s infinite linear;
+}
+
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Chamber & Laser Grid */
+
+.chamber-wrapper {
+  position: relative;
+  width: min(100%, 390px);
+  aspect-ratio: 1;
+  margin: 16px auto;
+  border: 2px solid #233b49;
+  border-radius: 16px;
+  background: #081118;
+  box-shadow: inset 0 0 40px #000000aa, 0 12px 36px #00000060;
+}
+
+.prism-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  gap: 6px;
+}
+
+.prism-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #1a2f3a;
+  border-radius: 8px;
+  background: #0d1b24;
+  cursor: pointer;
+  transition: all 120ms ease;
+  user-select: none;
+}
+
+.prism-cell:hover:not(.cell-wall) {
+  border-color: #3b6075;
+  background: #132532;
+}
+
+.cell-target-highlight {
+  border-color: #00e5ffaa !important;
+  background: #0e2938 !important;
+  box-shadow: inset 0 0 12px #00e5ff30;
+}
+
+.cell-crystal-awakened {
+  border-color: #00e67680 !important;
+  box-shadow: inset 0 0 16px #00e67625;
+}
+
+/* Obsidian Wall */
+
+.cell-wall {
+  cursor: not-allowed;
+  background: #070d12 !important;
+  border-color: #1a232b !important;
+}
+
+.wall-block {
+  width: 70%;
+  height: 70%;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #1f2a33, #0d1318);
+  border: 1px solid #2d3e4b;
+}
+
+/* Target Crystal */
+
+.crystal-gem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  z-index: 5;
+}
+
+.crystal-symbol {
+  font-size: 24px;
+  transition: transform 200ms ease;
+}
+
+.crystal-active .crystal-symbol {
+  transform: scale(1.15);
+  animation: crystal-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes crystal-pulse {
+  0%, 100% { transform: scale(1.12); }
+  50% { transform: scale(1.24); }
+}
+
+.crystal-color-pill {
+  width: 12px;
+  height: 4px;
+  border-radius: 4px;
+}
+
+/* Placed Mirror */
+
+.mirror-piece {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90%;
+  height: 90%;
+  border-radius: 8px;
+  border: 1px solid #4a758c;
+  background: linear-gradient(135deg, #1e3c4e, #112532);
+  z-index: 6;
+  box-shadow: 0 4px 10px #00000060;
+  transition: transform 150ms ease;
+}
+
+.mirror-icon {
+  font-size: 20px;
+}
+
+.mirror-surface {
+  position: absolute;
+  inset: 4px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.angle-forward .mirror-surface {
+  background: linear-gradient(45deg, transparent 46%, #00e5ff 48%, #ffffff 52%, transparent 54%);
+}
+
+.angle-backward .mirror-surface {
+  background: linear-gradient(135deg, transparent 46%, #00e5ff 48%, #ffffff 52%, transparent 54%);
+}
+
+.remove-piece-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: #ff2e54;
+  color: white;
+  font-size: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.8;
+  z-index: 10;
+}
+
+.remove-piece-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Edge Laser Emitters */
+
+.emitter-node {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #ffffffaa;
+  z-index: 15;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.emitter-arrow {
+  font-size: 9px;
+  color: #fff;
+  line-height: 1;
+}
+
+.emitter-color-red {
+  background: #ff2e54;
+  color: #ff2e54;
+}
+
+.emitter-color-green {
+  background: #00e676;
+  color: #00e676;
+}
+
+.emitter-color-blue {
+  background: #2979ff;
+  color: #2979ff;
+}
+
+/* SVG Laser Beams */
+
+.laser-svg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Optical Inventory */
+
+.inventory-section {
+  margin-top: 16px;
+}
+
+.inventory-rack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 12px;
+  border: 1px solid #233b49;
+  border-radius: 12px;
+  background: #0d1a24;
+}
+
+.inventory-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #36576b;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #19313f, #10212b);
+  color: #d8edf7;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.inventory-slot:hover {
+  border-color: #00e5ff;
+  background: #204154;
+  transform: translateY(-2px);
+}
+
+.slot-selected {
+  border-color: #00e5ff !important;
+  background: #1c4b63 !important;
+  box-shadow: 0 0 14px #00e5ff60;
+  transform: scale(1.04);
+}
+
+.inventory-mirror-icon {
+  font-size: 18px;
+}
+
+.inventory-label {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.5px;
+}
+
+.inventory-empty-msg {
+  color: #7b9ba8;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px;
+}
+
