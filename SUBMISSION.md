@@ -12,6 +12,7 @@
 ---
 
 ### App Links & Submissions Required
+* **GitHub Repository:** [https://github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
 * **Reddit Developer App Listing:** [https://developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 * **Subreddit Community & Demo Post:** [https://www.reddit.com/r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
 * **Installed Version:** `v0.0.6` (Active on `r/windward_daily_dev`)

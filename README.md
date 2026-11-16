@@ -7,6 +7,7 @@
 
 - **App Name / Slug:** `windward-daily` (Active on Developer Platform)
 - **App Title for Subreddit & Hackathon:** **Tangle: A Daily Knot**
+- **GitHub Repository:** [github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
 - **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 - **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
