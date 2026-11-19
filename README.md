@@ -5,13 +5,14 @@
 
 **Tangle** is an original daily planar graph puzzle built natively for Reddit using **Devvit Web** (React 19, TypeScript, Tailwind CSS 4, Hono, Devvit Redis, and Web Audio API).
 
-- **App Name / Slug:** `windward-daily` (Active on Developer Platform)
+- **App Name / Slug:** `tangle-daily` (Active on Developer Platform)
 - **App Title for Subreddit & Hackathon:** **Tangle: A Daily Knot**
 - **GitHub Repository:** [github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
 - **Developer / Pilot:** u/shaemaondc
-- **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
+- **Devvit Bot Account:** u/tangle-daily
+- **Devvit App Listing:** [developers.reddit.com/apps/tangle-daily](https://developers.reddit.com/apps/tangle-daily)
 - **Demo Subreddit:** [r/Tangle_daily](https://www.reddit.com/r/Tangle_daily)
-- **Deployed Version:** `v0.0.9` (Active on `r/Tangle_daily`)
+- **Deployed Version:** `v0.0.1` (Active on `r/Tangle_daily`)
 
 ---
 

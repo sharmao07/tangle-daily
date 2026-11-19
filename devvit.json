@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "windward-daily",
+  "name": "tangle-daily",
   "post": {
     "dir": "dist/client",
     "entrypoints": {

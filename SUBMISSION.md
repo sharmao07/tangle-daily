@@ -13,9 +13,10 @@
 
 ### App Links & Submissions Required
 * **GitHub Repository:** [https://github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
-* **Reddit Developer App Listing:** [https://developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
+* **Reddit Developer App Listing:** [https://developers.reddit.com/apps/tangle-daily](https://developers.reddit.com/apps/tangle-daily)
 * **Subreddit Community & Demo Post:** [https://www.reddit.com/r/Tangle_daily](https://www.reddit.com/r/Tangle_daily)
-* **Installed Version:** `v0.0.9` (Active on `r/Tangle_daily`)
+* **Devvit Bot Account:** [u/tangle-daily](https://www.reddit.com/user/tangle-daily)
+* **Installed Version:** `v0.0.1` (Active on `r/Tangle_daily`)
 
 ---
 
