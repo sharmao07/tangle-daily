@@ -31,6 +31,14 @@
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install"
   },
+  "scheduler": {
+    "tasks": {
+      "dailyKnotPost": {
+        "endpoint": "/internal/scheduler/daily-post",
+        "cron": "0 0 * * *"
+      }
+    }
+  },
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"

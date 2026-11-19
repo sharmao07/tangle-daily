@@ -366,6 +366,23 @@ api.post('/complete', async (c) => {
       subreddit
     );
 
+    // Award Subreddit User Flair
+    let userFlairAwarded: string | null = null;
+    if (won && username && username !== 'wanderer') {
+      try {
+        const flairText = `🧵 ${rankTitle} · ${newStreak}d streak`;
+        await reddit.setUserFlair({
+          subredditName: subreddit,
+          username,
+          text: flairText,
+          textColor: 'light',
+        });
+        userFlairAwarded = flairText;
+      } catch (flairErr) {
+        console.warn('[Reddit Flair] Unable to set user flair:', flairErr);
+      }
+    }
+
     return c.json<SubmitTangleResponse>({
       type: 'tangle_submitted',
       success: true,
@@ -375,6 +392,7 @@ api.post('/complete', async (c) => {
       shareText,
       rankTitle,
       userDailyRank,
+      userFlairAwarded,
       leaderboard: updatedLeaderboard,
     });
   } catch (error) {

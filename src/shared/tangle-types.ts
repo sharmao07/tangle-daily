@@ -64,6 +64,7 @@ export type UserStats = {
   rankTitle: string;
   userDailyRank?: number | undefined;
   weeklyHistory?: WeeklyDayStatus[];
+  userFlair?: string | null;
 };
 
 export type TangleInitResponse = {
@@ -98,6 +99,7 @@ export type SubmitTangleResponse = {
   shareText: string;
   rankTitle: string;
   userDailyRank: number;
+  userFlairAwarded?: string | null;
   leaderboard: LeaderboardEntry[];
 };
 

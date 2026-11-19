@@ -71,6 +71,7 @@ export function TangleApp() {
   const [userDailyRank, setUserDailyRank] = useState<number | undefined>(undefined);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyDayStatus[]>([]);
+  const [flairAwarded, setFlairAwarded] = useState<string | null>(null);
 
   const filterId = useId();
 
@@ -236,6 +237,9 @@ export function TangleApp() {
           }
           if (resp.leaderboard) {
             setLeaderboard(resp.leaderboard);
+          }
+          if (resp.userFlairAwarded) {
+            setFlairAwarded(resp.userFlairAwarded);
           }
         }
       } catch (err) {
@@ -840,6 +844,11 @@ export function TangleApp() {
             {userDailyRank !== undefined && (
               <span style={{ display: 'block', marginTop: '4px', color: '#38bdf8', fontWeight: 600 }}>
                 🏆 You ranked #{userDailyRank} on r/{context.subredditName ?? 'windward_daily_dev'} today!
+              </span>
+            )}
+            {flairAwarded && (
+              <span style={{ display: 'block', marginTop: '4px', color: '#4ade80', fontSize: '0.85rem' }}>
+                🏷️ Subreddit flair updated: <strong>{flairAwarded}</strong>
               </span>
             )}
           </p>
