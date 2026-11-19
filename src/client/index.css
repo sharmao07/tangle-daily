@@ -17,12 +17,16 @@ html,
 body,
 #root {
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   background-color: #0b0e11;
   color: #eef2f6;
   user-select: none;
   -webkit-user-select: none;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 button {
@@ -40,12 +44,14 @@ button {
 
 .tangle-app {
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 16px 14px 28px;
+  padding: 12px 14px 24px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Header */
@@ -54,54 +60,63 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  width: 100%;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid #1f252d;
+  box-sizing: border-box;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  flex-shrink: 0;
 }
 
-.brand-mark {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid #8a9ba8;
-  background: #192028;
+.brand-knot-icon {
+  color: #38bdf8;
+  flex-shrink: 0;
 }
 
 .brand-name {
   font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
   color: #f0f4f8;
+  line-height: 1;
+}
+
+.daily-badge {
+  font-size: 10.5px;
+  font-weight: 550;
+  color: #8a9ba8;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .header-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.daily-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #8a9ba8;
-  font-variant-numeric: tabular-nums;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   color: #8a9ba8;
   border: 1px solid transparent;
+  flex-shrink: 0;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 
@@ -115,30 +130,71 @@ button {
 
 .status-bar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.headline-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.headline-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
 }
 
 .headline-wrap h1 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 550;
+  font-size: 17px;
+  font-weight: 600;
   letter-spacing: -0.3px;
   color: #f0f4f8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.headline-wrap p {
-  margin: 3px 0 0;
-  font-size: 12px;
+.par-target {
+  font-size: 10.5px;
+  font-weight: 500;
   color: #8a9ba8;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.archetype-tag {
+  display: inline-block;
+  padding: 1.5px 6px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: #19222c;
+  color: #7dd3fc;
+  border: 1px solid #243444;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.3;
 }
 
 .metrics-group {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .metric-pill {
@@ -148,17 +204,25 @@ button {
 }
 
 .metric-pill span {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: #8a9ba8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .metric-pill strong {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 650;
   color: #f0f4f8;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+}
+
+.metric-sub {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
 }
 
 .metric-pill strong.tension {
@@ -175,7 +239,7 @@ button {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-height: 440px;
+  max-height: min(440px, calc(100vh - 280px));
   margin: 0 auto;
   border-radius: 12px;
   background-color: #0f1317;
@@ -188,6 +252,7 @@ button {
     inset 0 1px 3px rgba(0, 0, 0, 0.5),
     0 8px 20px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  box-sizing: border-box;
   touch-action: none; /* Prevents scroll interception during drag on mobile */
 }
 
@@ -388,20 +453,26 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .action-btn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 9px 8px;
   border-radius: 6px;
   background: #171c22;
   border: 1px solid #252d37;
   color: #c4d0dc;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
@@ -1013,9 +1084,14 @@ button {
   border-bottom-color: #e2ded5;
 }
 
-.tangle-app[data-theme='light'] .brand-mark {
-  border-color: #64748b;
-  background: #cbd5e1;
+.tangle-app[data-theme='light'] .brand-knot-icon {
+  color: #0284c7;
+}
+
+.tangle-app[data-theme='light'] .daily-badge {
+  color: #475569;
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .tangle-app[data-theme='light'] .brand-name,
@@ -1116,9 +1192,14 @@ button {
   border-bottom-color: #122847;
 }
 
-.tangle-app[data-theme='blueprint'] .brand-mark {
-  border-color: #38bdf8;
-  background: #0c2342;
+.tangle-app[data-theme='blueprint'] .brand-knot-icon {
+  color: #38bdf8;
+}
+
+.tangle-app[data-theme='blueprint'] .daily-badge {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.2);
 }
 
 .tangle-app[data-theme='blueprint'] .brand-name,

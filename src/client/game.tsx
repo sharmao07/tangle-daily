@@ -670,13 +670,21 @@ export function TangleApp() {
       {/* Header */}
       <header className="topbar">
         <div className="brand">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
-          ) : (
-            <div className="brand-mark" />
-          )}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="brand-knot-icon"
+          >
+            <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.083-8-12.356-8-5.096 0-5.096 8 0 8 5.273 0 7.261-8 12.356-8Z" />
+          </svg>
           <span className="brand-name">Tangle</span>
-          <span className="archetype-tag">{level.archetype}</span>
+          <span className="daily-badge">#{currentDay.toString().padStart(3, '0')}</span>
         </div>
 
         <div className="header-meta">
@@ -693,11 +701,11 @@ export function TangleApp() {
             }`}
           >
             {theme === 'dark' ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             ) : theme === 'light' ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
                 <line x1="12" y1="21" x2="12" y2="23" />
@@ -709,7 +717,7 @@ export function TangleApp() {
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
               </svg>
             ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2" />
                 <polyline points="2 17 12 22 22 17" />
                 <polyline points="2 12 12 17 22 12" />
@@ -724,7 +732,7 @@ export function TangleApp() {
             title="Toggle sound"
           >
             {isMuted ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23" />
                 <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
                 <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
@@ -732,7 +740,7 @@ export function TangleApp() {
                 <line x1="8" y1="23" x2="16" y2="23" />
               </svg>
             ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -742,14 +750,15 @@ export function TangleApp() {
 
           <button
             className="icon-btn"
-            onClick={() => setShowHelpModal(true)}
-            aria-label="How to play"
-            title="How to play"
+            onClick={() => setShowArchiveModal(true)}
+            aria-label="Past knots"
+            title="Past knots"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </button>
 
@@ -759,7 +768,7 @@ export function TangleApp() {
             aria-label="Subreddit Leaderboard"
             title="Subreddit Leaderboard"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
               <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
               <path d="M4 22h16" />
@@ -776,7 +785,7 @@ export function TangleApp() {
             aria-label="Records & streaks"
             title="Records & streaks"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10" />
               <line x1="12" y1="20" x2="12" y2="4" />
               <line x1="6" y1="20" x2="6" y2="14" />
@@ -785,27 +794,27 @@ export function TangleApp() {
 
           <button
             className="icon-btn"
-            onClick={() => setShowArchiveModal(true)}
-            aria-label="Past knots"
-            title="Past knots"
+            onClick={() => setShowHelpModal(true)}
+            aria-label="How to play"
+            title="How to play"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </button>
-
-          <span className="daily-label">#{currentDay.toString().padStart(3, '0')}</span>
         </div>
       </header>
 
       {/* Headline & Live Metrics */}
       <section className="status-bar">
         <div className="headline-wrap">
+          <div className="headline-kicker">
+            <span className="archetype-tag">{level.archetype}</span>
+            <span className="par-target">Target Par: {level.parMoves}</span>
+          </div>
           <h1>{level.title}</h1>
-          <p>Drag pins until zero lines cross</p>
         </div>
 
         <div className="metrics-group">
@@ -820,13 +829,13 @@ export function TangleApp() {
             <span>Moves</span>
             <strong>
               {moveCount}
-              <span style={{ fontSize: '11px', color: '#637180', fontWeight: 400 }}> / {level.parMoves}</span>
+              <span className="metric-sub">/{level.parMoves}</span>
             </strong>
           </div>
 
           <div className="metric-pill">
             <span>Time</span>
-            <strong style={{ fontSize: '16px' }}>
+            <strong>
               {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
             </strong>
           </div>
