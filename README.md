@@ -12,7 +12,7 @@
 - **Devvit Bot Account:** u/tangle-daily
 - **Devvit App Listing:** [developers.reddit.com/apps/tangle-daily](https://developers.reddit.com/apps/tangle-daily)
 - **Demo Subreddit:** [r/Tangle_daily](https://www.reddit.com/r/Tangle_daily)
-- **Deployed Version:** `v0.0.1` (Active on `r/Tangle_daily`)
+- **Deployed Version:** `v0.0.2` (Active on `r/Tangle_daily`)
 
 ---
 
