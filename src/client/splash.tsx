@@ -141,7 +141,7 @@ export const Splash = () => {
         </button>
 
         <div style={{ marginTop: '14px', fontSize: '11px', color: '#637180' }}>
-          r/{context.subredditName ?? 'tangle_daily'}
+          r/{(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'tangle_daily'}
         </div>
       </div>
     </div>

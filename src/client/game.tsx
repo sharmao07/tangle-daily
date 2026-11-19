@@ -102,7 +102,7 @@ export function TangleApp() {
     async function loadData() {
       try {
         const res = await fetch('/api/init');
-        if (res.ok) {
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
           const data = (await res.json()) as TangleInitResponse;
           if (data.level) {
             setLevel(data.level);
@@ -453,6 +453,7 @@ export function TangleApp() {
     tangleSounds.playGrab();
     setNodes(previous);
     setUndoStack((prev) => prev.slice(0, -1));
+    setMoveCount((c) => Math.max(0, c - 1));
   }, [hasWon, undoStack]);
 
   // Reset knot
@@ -505,7 +506,7 @@ export function TangleApp() {
   const handleShare = useCallback(() => {
     const starText = stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐';
     const paddedDay = currentDay.toString().padStart(3, '0');
-    const subreddit = context.subredditName ?? 'tangle_daily';
+    const subreddit = (typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'tangle_daily';
     const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toString().padStart(2, '0')}s`;
     const rankLine = userDailyRank !== undefined ? ` · Daily Rank: #${userDailyRank}` : '';
 
@@ -843,7 +844,7 @@ export function TangleApp() {
             Solved in <strong>{moveCount} moves</strong> ({Math.floor(elapsedSeconds / 60)}m {elapsedSeconds % 60}s) with zero intersecting lines. Par target was {level.parMoves} moves.
             {userDailyRank !== undefined && (
               <span style={{ display: 'block', marginTop: '6px', color: '#94a3b8', fontSize: '12px' }}>
-                Rank #{userDailyRank} on r/{context.subredditName ?? 'tangle_daily'} today
+                Rank #{userDailyRank} on r/{(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'tangle_daily'} today
               </span>
             )}
             {flairAwarded && (
@@ -905,7 +906,7 @@ export function TangleApp() {
             </div>
 
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px' }}>
-              Daily Knot #{currentDay} · r/{context.subredditName ?? 'tangle_daily'}
+              Daily Knot #{currentDay} · r/{(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'tangle_daily'}
             </p>
 
             {userDailyRank !== undefined && (
