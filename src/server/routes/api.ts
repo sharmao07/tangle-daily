@@ -3,6 +3,7 @@ import { context, redis, reddit } from '@devvit/web/server';
 import {
   calculateDayNumber,
   getTangleLevelForDay,
+  getUserRank,
   type DailyCommunityStats,
   type SubmitTangleRequest,
   type SubmitTangleResponse,
@@ -24,16 +25,22 @@ function generateTangleShareText(
   initialCrossings: number,
   score: number,
   streak: number,
+  rankTitle: string,
+  timeSeconds: number | undefined,
   subreddit: string
 ): string {
   const stars = moves <= parMoves ? '⭐⭐⭐' : moves <= parMoves + 2 ? '⭐⭐' : '⭐';
   const paddedDay = dayNumber.toString().padStart(3, '0');
+  const timeFormatted =
+    timeSeconds !== undefined && timeSeconds > 0
+      ? ` · ${Math.floor(timeSeconds / 60)}m ${(timeSeconds % 60).toString().padStart(2, '0')}s`
+      : '';
 
   return [
     `TANGLE #${paddedDay} · Daily Knot ${stars}`,
-    `Solved in ${moves} moves (Par: ${parMoves})`,
-    `Crossings: ${initialCrossings} ➔ 0`,
-    `Score: ${score.toLocaleString()}${streak > 0 ? ` · Streak: ${streak} days` : ''}`,
+    `Rank: ${rankTitle}${streak > 0 ? ` · Streak: ${streak} day${streak === 1 ? '' : 's'}` : ''}`,
+    `Solved in ${moves} moves (Par: ${parMoves})${timeFormatted}`,
+    `Crossings: ${initialCrossings} ➔ 0 · Score: ${score.toLocaleString()}`,
     '',
     `Untangle today on r/${subreddit}`,
   ].join('\n');
@@ -71,6 +78,7 @@ api.get('/init', async (c) => {
       maxStreak: 0,
       totalSolved: 0,
       todayCompleted: false,
+      rankTitle: getUserRank(0),
     };
 
     if (userStatsRaw) {
@@ -80,6 +88,7 @@ api.get('/init', async (c) => {
         console.error('Error parsing user stats:', e);
       }
     }
+    userStats.rankTitle = getUserRank(userStats.currentStreak);
 
     // Check if played today
     const todayRecord = await redis.get(`tangle:user:${username}:day:${dayNumber}`).catch(() => null);
@@ -89,6 +98,7 @@ api.get('/init', async (c) => {
         userStats.todayCompleted = true;
         userStats.todayScore = parsed.score;
         userStats.todayMoves = parsed.moves;
+        userStats.todayTimeSeconds = parsed.timeSeconds;
       } catch (e) {
         console.error('Error parsing today record:', e);
       }
@@ -138,7 +148,7 @@ api.post('/complete', async (c) => {
     const username = (await reddit.getCurrentUsername()) ?? 'wanderer';
     const subreddit = context.subredditName ?? 'windward_daily_dev';
 
-    const { dayNumber, won, moves, parMoves, initialCrossings, score } = body;
+    const { dayNumber, won, moves, parMoves, initialCrossings, score, timeSeconds } = body;
 
     // Increment community totals
     await Promise.all([
@@ -154,6 +164,7 @@ api.post('/complete', async (c) => {
       maxStreak: 0,
       totalSolved: 0,
       todayCompleted: false,
+      rankTitle: getUserRank(0),
     };
 
     if (userStatsRaw) {
@@ -170,6 +181,7 @@ api.post('/complete', async (c) => {
     }
     const maxStreak = Math.max(userStats.maxStreak || 0, newStreak);
     const totalSolved = (userStats.totalSolved || 0) + (won ? 1 : 0);
+    const rankTitle = getUserRank(newStreak);
 
     const updatedUserStats: UserStats = {
       username,
@@ -179,6 +191,8 @@ api.post('/complete', async (c) => {
       todayCompleted: true,
       todayScore: score,
       todayMoves: moves,
+      todayTimeSeconds: timeSeconds,
+      rankTitle,
     };
 
     await Promise.all([
@@ -190,6 +204,7 @@ api.post('/complete', async (c) => {
           won,
           moves,
           score,
+          timeSeconds,
           completedAt: new Date().toISOString(),
         })
       ).catch(() => null),
@@ -204,6 +219,8 @@ api.post('/complete', async (c) => {
       initialCrossings,
       score,
       newStreak,
+      rankTitle,
+      timeSeconds,
       subreddit
     );
 
@@ -214,6 +231,7 @@ api.post('/complete', async (c) => {
       newStreak,
       totalKnotsUntangled: communityTotalRaw ? parseInt(communityTotalRaw, 10) : 1,
       shareText,
+      rankTitle,
     });
   } catch (error) {
     console.error('Error submitting knot solve:', error);

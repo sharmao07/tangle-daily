@@ -11,7 +11,7 @@
 - **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 - **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-- **Deployed Version:** `v0.0.6` (Active on `r/windward_daily_dev`)
+- **Deployed Version:** `v0.0.7` (Active on `r/windward_daily_dev`)
 
 ---
 
@@ -19,14 +19,17 @@
 
 Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grounded in Graph Theory:
 
-* **The Knot:** Every day at 00:00 UTC, a new scrambled planar graph unlocks with 6 to 9 brass pins and interconnected silk threads.
+* **The Knot:** Every day at 00:00 UTC, a new scrambled planar graph unlocks across three rotating mathematical archetypes:
+  * **Radial Wheel ($W_n$):** Center hub connected to an outer polygon rim.
+  * **Prismatic Cage ($Y_n$):** Concentric inner and outer rings with radial ladder rungs.
+  * **Faceted Gem:** Triangulated convex polygon with fan chords dividing the interior into non-crossing facets.
 * **The Goal:** Untangle the threads until **zero lines cross**.
 * **Direct Tactile Drag:** Touch/click and drag any brass pin across the drafting board. As you drag, intersecting threads are calculated in real time using 2D cross-product line intersection math.
 * **Tactile Multi-Layer Pins:** Milled outer bezel, metallic cap gradient, center rivet, and an enlarged 32px touch-hit hitbox for zero-miss mobile drag.
 * **Real-Time Visual & Auditory Feedback:**
-  * **Tension Lines:** Crossed lines appear dashed with warm amber tension and orange intersection nodes.
+  * **Tension Lines:** Crossed lines appear dashed with warm amber tension, active stroke crawling animation, and orange intersection nodes.
   * **Cleared Lines:** Uncrossed lines immediately turn solid silver/bone white.
-  * **Spark Bursts:** Disentangling an intersection triggers a crisp burst of spark particles.
+  * **Spark Bursts & Victory Wave:** Disentangling an intersection triggers a crisp burst of spark particles; solving the puzzle triggers an expanding green victory shockwave.
   * **Tension Hint:** A tactical button highlights the pin connected to the most crossed threads, offering mathematical intuition without spoiling the solution.
   * **Acoustic Feedback:** Procedural Web Audio synthesizer plays a tactile peg lift on grab, soft placement tap on release, ascending pentatonic scale chimes as crossings decrease, and a radiant D Major 9 chord upon full solve.
 
@@ -48,16 +51,16 @@ Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grou
 
 ### 3. Native Reddit Community Integration
 * **Community Counter:** Devvit Redis tracks the collective count of knots untangled worldwide today.
+* **Topological Ranks & Streaks:** Progression from *Wanderer* $\to$ *Knot Apprentice* $\to$ *Thread Weaver* $\to$ *Planar Scholar* $\to$ *Topology Grandmaster*.
 * **Spoiler-Free Reddit Comment Card:** 1-click clipboard copy of formatted results designed for Reddit discussion threads:
   ```
   TANGLE #042 · Daily Knot ⭐⭐⭐
-  Solved in 4 moves (Par: 4)
-  Crossings: 9 ➔ 0
-  Score: 1,400 · Streak: 5 days
+  Rank: Thread Weaver · Streak: 4 days
+  Solved in 4 moves (Par: 4) · 0m 38s
+  Crossings: 9 ➔ 0 · Score: 1,400
 
   Untangle today on r/windward_daily_dev
   ```
-* **Streaks & Records:** Redis persists daily consecutive completions and personal best move records per Reddit username (`u/username`).
 
 ---
 
@@ -77,5 +80,5 @@ npm run test:unit
 npm run build
 
 # Deploy & Upload to Devvit
-npm run deploy
+npx devvit upload
 ```

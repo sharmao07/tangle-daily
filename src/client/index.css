@@ -229,6 +229,34 @@ button {
   stroke: #e06c30;
   stroke-width: 2.6;
   stroke-dasharray: 6 3;
+  animation: tension-crawl 1.2s linear infinite;
+}
+
+@keyframes tension-crawl {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+.victory-ripple {
+  fill: none;
+  stroke: #4ade80;
+  stroke-width: 2;
+  opacity: 0.85;
+  animation: ripple-expand 900ms ease-out forwards;
+}
+
+@keyframes ripple-expand {
+  0% {
+    r: 10px;
+    opacity: 0.9;
+    stroke-width: 3.5px;
+  }
+  100% {
+    r: 520px;
+    opacity: 0;
+    stroke-width: 0.5px;
+  }
 }
 
 .thread-solved {
@@ -645,4 +673,58 @@ button {
   font-size: 11px;
   color: #637180;
   margin-top: 1px;
+}
+
+.splash-subtitle {
+  margin: -2px 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.splash-preview-box {
+  width: 100%;
+  max-width: 220px;
+  height: 90px;
+  margin: 0 auto 16px;
+  border-radius: 8px;
+  background: #11151b;
+  border: 1px solid #202732;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.splash-preview-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.user-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 550;
+  background: #182029;
+  border: 1px solid #283341;
+  color: #cbd5e1;
+}
+
+.archetype-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #19222c;
+  color: #7dd3fc;
+  border: 1px solid #243444;
+  margin-left: 6px;
 }

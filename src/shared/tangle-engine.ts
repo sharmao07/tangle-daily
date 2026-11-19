@@ -7,7 +7,7 @@ export function calculateDayNumber(date: Date = new Date()): number {
   return Math.max(1, diffDays + 1);
 }
 
-// Line intersection math
+// Line intersection math using 2D cross products
 function ccw(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
   return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 }
@@ -107,8 +107,13 @@ export function evaluateGraph(
 
 /**
  * Procedural Planar Graph Generator:
- * Generates an undeniably planar graph by embedding N vertices in a wheel / outer-cycle + non-crossing triangulation,
- * verifying 0 crossings in solved state, and then scrambling the vertex positions so the puzzle starts with crossings!
+ * Generates an undeniably planar graph across three distinct topological archetypes:
+ * 1. Radial Wheel (W_n)
+ * 2. Prismatic Concentric Cylinder (Y_n)
+ * 3. Faceted Convex Polygon (Triangulated Gem)
+ *
+ * Each archetype is embedded with 0 crossings in its canonical state, verified,
+ * and scrambled with a deterministic Mulberry32 PRNG seed.
  */
 export function generatePlanarKnot(dayNumber: number): TangleLevel {
   let seed = Math.imul(dayNumber ^ 0x6d2b79f5, 0x159a55e5);
@@ -118,71 +123,140 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
     return ((seed ^ (seed >>> 14)) >>> 0) / 4294967296;
   };
 
-  const nodeCount = 6 + (dayNumber % 4); // 6, 7, 8, or 9 vertices
-  const titles = [
-    'The Hexagonal Loop',
-    'The Star Polygon',
-    'Crown of Seven',
-    'The Octagon Spire',
-    'The Radial Web',
-    'The Prismatic Ring',
-  ];
-  const title = titles[(dayNumber - 1) % titles.length] ?? `Knot #${dayNumber}`;
-
-  // 1. Compute a planar embedding (circle layout with center hub, or simple cycle + triangulation)
-  // Outer ring of (nodeCount - 1) vertices + 1 center hub
-  const ringCount = nodeCount - 1;
-  const centerNode: GraphNode = { id: `n${nodeCount}`, x: 0.5, y: 0.5 };
+  const archetypeIndex = (dayNumber - 1) % 3;
+  let title: string;
+  let archetype: string;
   const planarNodes: GraphNode[] = [];
-
-  for (let i = 0; i < ringCount; i++) {
-    const angle = (2 * Math.PI * i) / ringCount;
-    const r = 0.35;
-    const x = 0.5 + r * Math.cos(angle);
-    const y = 0.5 + r * Math.sin(angle);
-    planarNodes.push({ id: `n${i + 1}`, x, y });
-  }
-  planarNodes.push(centerNode);
-
-  // 2. Add edges:
-  // - Outer ring cycle: n1-n2, n2-n3, ..., n_{k}-n1
-  // - Center spokes: center connects to each ring node
   const edges: GraphEdge[] = [];
-  for (let i = 0; i < ringCount; i++) {
-    const next = (i + 1) % ringCount;
-    edges.push({
-      id: `e_ring_${i}`,
-      source: `n${i + 1}`,
-      target: `n${next + 1}`,
-    });
-  }
-  for (let i = 0; i < ringCount; i++) {
-    edges.push({
-      id: `e_spoke_${i}`,
-      source: centerNode.id,
-      target: `n${i + 1}`,
-    });
+
+  if (archetypeIndex === 0) {
+    // Wheel Graph: Outer ring + center hub
+    archetype = 'Radial Wheel';
+    const ringCount = 5 + (dayNumber % 4); // 5 to 8 ring nodes (total 6 to 9)
+    const titles = [
+      'The Hexagonal Hub',
+      'The Septagon Wheel',
+      'The Octagon Spire',
+      'The Radial Nexus',
+    ];
+    title = titles[(dayNumber - 1) % titles.length] ?? `Radial Knot #${dayNumber}`;
+
+    const centerNode: GraphNode = { id: `n${ringCount + 1}`, x: 0.5, y: 0.5 };
+    for (let i = 0; i < ringCount; i++) {
+      const angle = (2 * Math.PI * i) / ringCount;
+      const r = 0.36;
+      planarNodes.push({
+        id: `n${i + 1}`,
+        x: 0.5 + r * Math.cos(angle),
+        y: 0.5 + r * Math.sin(angle),
+      });
+    }
+    planarNodes.push(centerNode);
+
+    // Rim edges
+    for (let i = 0; i < ringCount; i++) {
+      const next = (i + 1) % ringCount;
+      edges.push({ id: `e_rim_${i}`, source: `n${i + 1}`, target: `n${next + 1}` });
+    }
+    // Hub spokes
+    for (let i = 0; i < ringCount; i++) {
+      edges.push({ id: `e_spoke_${i}`, source: centerNode.id, target: `n${i + 1}` });
+    }
+  } else if (archetypeIndex === 1) {
+    // Concentric Prism Ladder: Outer ring + concentric inner ring + non-crossing rungs
+    archetype = 'Prismatic Cage';
+    const k = 4; // 4 outer, 4 inner = 8 nodes
+    const titles = [
+      'The Prismatic Cage',
+      'Concentric Rings',
+      'The Obsidian Gate',
+      'The Dual Orbit',
+    ];
+    title = titles[(dayNumber - 1) % titles.length] ?? `Prism Knot #${dayNumber}`;
+
+    const rOuter = 0.38;
+    const rInner = 0.18;
+    for (let i = 0; i < k; i++) {
+      const angle = (2 * Math.PI * i) / k;
+      planarNodes.push({
+        id: `n_out_${i + 1}`,
+        x: 0.5 + rOuter * Math.cos(angle),
+        y: 0.5 + rOuter * Math.sin(angle),
+      });
+      planarNodes.push({
+        id: `n_in_${i + 1}`,
+        x: 0.5 + rInner * Math.cos(angle),
+        y: 0.5 + rInner * Math.sin(angle),
+      });
+    }
+
+    // Outer cycle
+    for (let i = 0; i < k; i++) {
+      const next = (i + 1) % k;
+      edges.push({ id: `e_out_${i}`, source: `n_out_${i + 1}`, target: `n_out_${next + 1}` });
+    }
+    // Inner cycle
+    for (let i = 0; i < k; i++) {
+      const next = (i + 1) % k;
+      edges.push({ id: `e_in_${i}`, source: `n_in_${i + 1}`, target: `n_in_${next + 1}` });
+    }
+    // Radial rungs
+    for (let i = 0; i < k; i++) {
+      edges.push({ id: `e_rung_${i}`, source: `n_out_${i + 1}`, target: `n_in_${i + 1}` });
+    }
+  } else {
+    // Triangulated Convex Polygon: Outer cycle + non-crossing fan chords
+    archetype = 'Faceted Gem';
+    const n = 7;
+    const titles = [
+      'The Faceted Diamond',
+      'The Celestial Kite',
+      'Crown of Seven',
+      'The Crystalline Fold',
+    ];
+    title = titles[(dayNumber - 1) % titles.length] ?? `Facet Knot #${dayNumber}`;
+
+    const r = 0.36;
+    for (let i = 0; i < n; i++) {
+      const angle = (2 * Math.PI * i) / n;
+      planarNodes.push({
+        id: `n${i + 1}`,
+        x: 0.5 + r * Math.cos(angle),
+        y: 0.5 + r * Math.sin(angle),
+      });
+    }
+
+    // Perimeter cycle
+    for (let i = 0; i < n; i++) {
+      const next = (i + 1) % n;
+      edges.push({ id: `e_cycle_${i}`, source: `n${i + 1}`, target: `n${next + 1}` });
+    }
+
+    // Internal non-crossing chords from vertex 0 to vertices 2, 3, 4, 5
+    for (let i = 2; i <= n - 2; i++) {
+      edges.push({ id: `e_chord_${i}`, source: 'n1', target: `n${i + 1}` });
+    }
   }
 
-  // 3. Verify that the planar embedding has strictly 0 crossings!
-  const planarEval = evaluateGraph(planarNodes, edges);
-  if (planarEval.crossingsCount !== 0) {
-    console.error('Planar embedding warning: crossings found in generator base');
+  // Double check canonical planarity
+  const baseEval = evaluateGraph(planarNodes, edges);
+  if (baseEval.crossingsCount !== 0) {
+    console.error('Planar embedding warning: canonical base had crossings');
   }
 
-  // 4. Scramble the node positions to create the puzzle!
-  // Permute / shuffle the positions among the nodes
+  // Scramble node positions
+  const nodeCount = planarNodes.length;
   const scrambledPositions: { x: number; y: number }[] = [];
   for (let i = 0; i < nodeCount; i++) {
     const angle = (2 * Math.PI * i) / nodeCount + (rng() * 0.4 - 0.2);
-    const r = 0.2 + rng() * 0.25;
+    const r = 0.2 + rng() * 0.22;
     scrambledPositions.push({
       x: 0.5 + r * Math.cos(angle),
       y: 0.5 + r * Math.sin(angle),
     });
   }
 
-  // Shuffle positions array
+  // Fisher-Yates shuffle with seeded PRNG
   for (let i = scrambledPositions.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     const temp = scrambledPositions[i]!;
@@ -190,21 +264,34 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
     scrambledPositions[j] = temp;
   }
 
-  const puzzleNodes: GraphNode[] = planarNodes.map((n, idx) => ({
+  let puzzleNodes: GraphNode[] = planarNodes.map((n, idx) => ({
     id: n.id,
     x: Math.max(0.12, Math.min(0.88, scrambledPositions[idx]!.x)),
     y: Math.max(0.12, Math.min(0.88, scrambledPositions[idx]!.y)),
   }));
 
-  const initialEval = evaluateGraph(puzzleNodes, edges);
+  let initialEval = evaluateGraph(puzzleNodes, edges);
+
+  // If by rare chance it started untangled, swap two nodes to ensure a challenge
+  if (initialEval.crossingsCount === 0 && puzzleNodes.length >= 2) {
+    const n0 = puzzleNodes[0]!;
+    const n1 = puzzleNodes[1]!;
+    puzzleNodes = puzzleNodes.map((pn, i) => {
+      if (i === 0) return { ...pn, x: n1.x, y: n1.y };
+      if (i === 1) return { ...pn, x: n0.x, y: n0.y };
+      return pn;
+    });
+    initialEval = evaluateGraph(puzzleNodes, edges);
+  }
 
   return {
     dayNumber,
     title,
+    archetype,
     nodes: puzzleNodes,
     edges,
     initialCrossings: initialEval.crossingsCount,
-    parMoves: Math.max(3, Math.ceil(nodeCount / 2)),
+    parMoves: Math.max(3, Math.ceil(edges.length / 3)),
   };
 }
 

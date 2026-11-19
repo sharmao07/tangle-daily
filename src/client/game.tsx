@@ -7,6 +7,7 @@ import {
   calculateDayNumber,
   evaluateGraph,
   getTangleLevelForDay,
+  getUserRank,
   type GraphNode,
   type SubmitTangleRequest,
   type SubmitTangleResponse,
@@ -34,6 +35,10 @@ export function TangleApp() {
   const [moveCount, setMoveCount] = useState<number>(0);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
 
+  // Timer & Victory animation
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [showVictoryRipple, setShowVictoryRipple] = useState<boolean>(false);
+
   // Active interaction
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -58,6 +63,7 @@ export function TangleApp() {
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [maxStreak, setMaxStreak] = useState<number>(0);
   const [totalUntangled, setTotalUntangled] = useState<number>(0);
+  const [userRank, setUserRank] = useState<string>(() => getUserRank(0));
 
   const filterId = useId();
 
@@ -66,6 +72,19 @@ export function TangleApp() {
     setTimeout(() => {
       setToastMessage((curr) => (curr === msg ? null : curr));
     }, 3200);
+  }, []);
+
+  // Timer interval: ticks while actively untangling
+  useEffect(() => {
+    if (hasWonRef.current) return;
+
+    const timer = setInterval(() => {
+      if (!hasWonRef.current) {
+        setElapsedSeconds((s) => s + 1);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   // Fetch initial data from server
@@ -88,6 +107,7 @@ export function TangleApp() {
             setCurrentStreak(data.userStats.currentStreak);
             setMaxStreak(data.userStats.maxStreak);
             setTotalUntangled(data.userStats.totalSolved);
+            setUserRank(data.userStats.rankTitle || getUserRank(data.userStats.currentStreak));
           }
         }
       } catch (err) {
@@ -105,12 +125,14 @@ export function TangleApp() {
     setNodes(newLvl.nodes.map((n) => ({ ...n })));
     setUndoStack([]);
     setMoveCount(0);
+    setElapsedSeconds(0);
     setHasSubmitted(false);
     hasWonRef.current = false;
     previousCrossingsRef.current = newLvl.initialCrossings;
     setDraggingNodeId(null);
     setSelectedNodeId(null);
     setShowTensionHint(false);
+    setShowVictoryRipple(false);
     setSparks([]);
     setShowArchiveModal(false);
   }, []);
@@ -158,7 +180,7 @@ export function TangleApp() {
 
   // Submit score on untangle
   const submitSolution = useCallback(
-    async (finalMoves: number) => {
+    async (finalMoves: number, timeSpent: number) => {
       if (hasSubmitted) return;
       setHasSubmitted(true);
 
@@ -170,6 +192,7 @@ export function TangleApp() {
         parMoves: level.parMoves,
         initialCrossings: level.initialCrossings,
         score,
+        timeSeconds: timeSpent,
       };
 
       try {
@@ -186,6 +209,9 @@ export function TangleApp() {
           if (resp.totalKnotsUntangled !== undefined) {
             setTotalSolved(resp.totalKnotsUntangled);
           }
+          if (resp.rankTitle) {
+            setUserRank(resp.rankTitle);
+          }
         }
       } catch (err) {
         console.error('Error submitting tangle solution:', err);
@@ -198,10 +224,11 @@ export function TangleApp() {
   useEffect(() => {
     if (hasWon && !hasWonRef.current) {
       hasWonRef.current = true;
+      setShowVictoryRipple(true);
       tangleSounds.playSolved();
-      void submitSolution(moveCount);
+      void submitSolution(moveCount, elapsedSeconds);
     }
-  }, [hasWon, moveCount, submitSolution]);
+  }, [hasWon, moveCount, elapsedSeconds, submitSolution]);
 
   // Spawn visual sparks
   const triggerSparks = useCallback((cx: number, cy: number) => {
@@ -409,12 +436,14 @@ export function TangleApp() {
     setNodes(level.nodes.map((n) => ({ ...n })));
     setUndoStack([]);
     setMoveCount(0);
+    setElapsedSeconds(0);
     setHasSubmitted(false);
     hasWonRef.current = false;
     previousCrossingsRef.current = level.initialCrossings;
     setDraggingNodeId(null);
     setSelectedNodeId(null);
     setShowTensionHint(false);
+    setShowVictoryRipple(false);
   }, [level]);
 
   // Tension hint toggle
@@ -452,12 +481,13 @@ export function TangleApp() {
     const starText = stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐';
     const paddedDay = currentDay.toString().padStart(3, '0');
     const subreddit = context.subredditName ?? 'windward_daily_dev';
+    const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toString().padStart(2, '0')}s`;
 
     const shareText = [
       `TANGLE #${paddedDay} · Daily Knot ${starText}`,
-      `Solved in ${moveCount} moves (Par: ${level.parMoves})`,
-      `Crossings: ${level.initialCrossings} ➔ 0`,
-      `Score: ${score.toLocaleString()}${currentStreak > 0 ? ` · Streak: ${currentStreak} days` : ''}`,
+      `Rank: ${userRank}${currentStreak > 0 ? ` · Streak: ${currentStreak} day${currentStreak === 1 ? '' : 's'}` : ''}`,
+      `Solved in ${moveCount} moves (Par: ${level.parMoves}) · ${timeFormatted}`,
+      `Crossings: ${level.initialCrossings} ➔ 0 · Score: ${score.toLocaleString()}`,
       '',
       `Untangle today on r/${subreddit}`,
     ].join('\n');
@@ -470,7 +500,7 @@ export function TangleApp() {
       .catch(() => {
         showToast('Recorded knot solve. Share to Reddit.');
       });
-  }, [stars, currentDay, moveCount, level.parMoves, level.initialCrossings, score, currentStreak, showToast]);
+  }, [stars, currentDay, userRank, currentStreak, moveCount, level.parMoves, elapsedSeconds, level.initialCrossings, score, showToast]);
 
   return (
     <main className="tangle-app">
@@ -482,6 +512,7 @@ export function TangleApp() {
         <div className="brand">
           <div className="brand-mark" />
           <span className="brand-name">Tangle</span>
+          <span className="archetype-tag">{level.archetype}</span>
         </div>
 
         <div className="header-meta">
@@ -574,6 +605,13 @@ export function TangleApp() {
               <span style={{ fontSize: '11px', color: '#637180', fontWeight: 400 }}> / {level.parMoves}</span>
             </strong>
           </div>
+
+          <div className="metric-pill">
+            <span>Time</span>
+            <strong style={{ fontSize: '16px' }}>
+              {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
+            </strong>
+          </div>
         </div>
       </section>
 
@@ -602,6 +640,9 @@ export function TangleApp() {
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
+
+          {/* Victory concentric expanding ripple */}
+          {showVictoryRipple && <circle cx={500} cy={500} className="victory-ripple" />}
 
           {/* Edges / Threads */}
           {level.edges.map((edge) => {
@@ -741,7 +782,7 @@ export function TangleApp() {
           </div>
 
           <p>
-            Solved in {moveCount} moves with zero intersecting lines. Par target was {level.parMoves} moves.
+            Solved in <strong>{moveCount} moves</strong> ({Math.floor(elapsedSeconds / 60)}m {elapsedSeconds % 60}s) with zero intersecting lines. Par target was {level.parMoves} moves.
           </p>
 
           <div className="result-actions">
@@ -774,10 +815,11 @@ export function TangleApp() {
               <strong>zero lines cross</strong>.
             </p>
             <p>
-              • <strong>Dashed amber threads</strong> indicate active crossings.<br />
+              • <strong>Dashed amber threads</strong> indicate active crossings under tension.<br />
               • <strong>Solid silver threads</strong> are clear of intersections.<br />
               • <strong>Tension hint</strong> highlights the pin tied to the most crossings.<br />
-              • Untangle within <strong>Par moves</strong> to earn 3 stars.
+              • Untangle within <strong>Par moves</strong> to earn 3 stars.<br />
+              • Advance your rank from <em>Wanderer</em> to <em>Topology Grandmaster</em> by maintaining your daily streak!
             </p>
           </div>
         </div>
@@ -827,13 +869,17 @@ export function TangleApp() {
                 ✕
               </button>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+              <span className="user-rank-badge">{userRank}</span>
+              <span style={{ fontSize: '12px', color: '#8a9ba8' }}>Current Standing</span>
+            </div>
             <p>
               Current streak: <strong>{currentStreak} days</strong><br />
               Longest streak: <strong>{maxStreak} days</strong><br />
               Total solved: <strong>{totalUntangled} knots</strong>
             </p>
             <p style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px' }}>
-              The Reddit community has untangled <strong>{totalSolved.toLocaleString()} knots</strong> today.
+              The Reddit community has untangled <strong>{totalSolved.toLocaleString()} knots</strong> worldwide.
             </p>
           </div>
         </div>

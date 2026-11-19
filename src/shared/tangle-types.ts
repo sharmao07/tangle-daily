@@ -20,6 +20,7 @@ export type IntersectionPoint = {
 export type TangleLevel = {
   dayNumber: number;
   title: string;
+  archetype: string;
   nodes: GraphNode[];
   edges: GraphEdge[];
   initialCrossings: number;
@@ -39,6 +40,8 @@ export type UserStats = {
   todayCompleted: boolean;
   todayScore?: number | undefined;
   todayMoves?: number | undefined;
+  todayTimeSeconds?: number | undefined;
+  rankTitle: string;
 };
 
 export type TangleInitResponse = {
@@ -59,6 +62,7 @@ export type SubmitTangleRequest = {
   parMoves: number;
   initialCrossings: number;
   score: number;
+  timeSeconds?: number;
 };
 
 export type SubmitTangleResponse = {
@@ -68,24 +72,13 @@ export type SubmitTangleResponse = {
   newStreak: number;
   totalKnotsUntangled: number;
   shareText: string;
+  rankTitle: string;
 };
 
-// Backward compatibility stubs for starter template hooks
-export type InitResponse = {
-  type: 'init';
-  postId: string;
-  count: number;
-  username: string;
-};
-
-export type IncrementResponse = {
-  type: 'increment';
-  postId: string;
-  count: number;
-};
-
-export type DecrementResponse = {
-  type: 'decrement';
-  postId: string;
-  count: number;
-};
+export function getUserRank(streak: number): string {
+  if (streak >= 14) return 'Topology Grandmaster';
+  if (streak >= 7) return 'Planar Scholar';
+  if (streak >= 3) return 'Thread Weaver';
+  if (streak >= 1) return 'Knot Apprentice';
+  return 'Wanderer';
+}
