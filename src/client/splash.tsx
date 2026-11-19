@@ -53,7 +53,12 @@ export const Splash = () => {
             {avatarUrl ? (
               <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
             ) : (
-              <div className="snoo-avatar-fallback">👤</div>
+              <div className="snoo-avatar-fallback">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
             )}
             <span className="splash-rank-tag">{rankTitle}</span>
           </div>

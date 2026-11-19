@@ -48,6 +48,8 @@ export function TangleApp() {
   const [sparks, setSparks] = useState<Spark[]>([]);
 
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragStartScreenPosRef = useRef<{ x: number; y: number } | null>(null);
+  const hasDraggedRef = useRef<boolean>(false);
   const previousCrossingsRef = useRef<number>(level.initialCrossings);
   const hasWonRef = useRef<boolean>(false);
 
@@ -283,7 +285,7 @@ export function TangleApp() {
     }, 450);
   }, []);
 
-  // Pointer Drag Handlers
+  // Pointer Drag Handlers (calibrated touch drag with zero false moves on tap)
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<SVGGElement>, nodeId: string) => {
       if (hasWon) return;
@@ -292,11 +294,12 @@ export function TangleApp() {
       const node = nodes.find((n) => n.id === nodeId);
       if (node) {
         dragStartPosRef.current = { x: node.x, y: node.y };
+        dragStartScreenPosRef.current = { x: e.clientX, y: e.clientY };
+        hasDraggedRef.current = false;
       }
 
       setDraggingNodeId(nodeId);
       setSelectedNodeId(nodeId);
-      tangleSounds.playGrab();
 
       try {
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -310,6 +313,20 @@ export function TangleApp() {
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!draggingNodeId || hasWon || !containerRef.current) return;
+
+      const screenStart = dragStartScreenPosRef.current;
+      if (screenStart) {
+        const screenDist = Math.hypot(e.clientX - screenStart.x, e.clientY - screenStart.y);
+        // Require meaningful pointer movement before initiating drag (filters out taps / micro-shakes)
+        if (screenDist < 8 && !hasDraggedRef.current) {
+          return;
+        }
+      }
+
+      if (!hasDraggedRef.current) {
+        hasDraggedRef.current = true;
+        tangleSounds.playGrab();
+      }
 
       const rect = containerRef.current.getBoundingClientRect();
       const rawX = (e.clientX - rect.left) / rect.width;
@@ -339,13 +356,13 @@ export function TangleApp() {
       const currentNode = nodes.find((n) => n.id === draggingNodeId);
       const startPos = dragStartPosRef.current;
 
-      // Only count as a move if position changed meaningfully (> 2% of board)
-      if (currentNode && startPos) {
+      // Only count as a move if pin was actually dragged and displaced >= 3.5% of the board
+      if (hasDraggedRef.current && currentNode && startPos) {
         const dx = currentNode.x - startPos.x;
         const dy = currentNode.y - startPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.hypot(dx, dy);
 
-        if (dist > 0.02) {
+        if (dist >= 0.035) {
           // Push previous positions to undo stack
           setUndoStack((prev) => [
             ...prev,
@@ -361,11 +378,23 @@ export function TangleApp() {
             triggerSparks(currentNode.x * 1000, currentNode.y * 1000);
           }
           previousCrossingsRef.current = evaluation.crossingsCount;
+        } else {
+          // Snap back if moved less than threshold: zero moves counted
+          setNodes((prev) =>
+            prev.map((n) => (n.id === draggingNodeId ? { ...n, x: startPos.x, y: startPos.y } : n))
+          );
         }
+      } else if (!hasDraggedRef.current && startPos) {
+        // Pure tap or touch without drag: restore exact position, 0 moves counted
+        setNodes((prev) =>
+          prev.map((n) => (n.id === draggingNodeId ? { ...n, x: startPos.x, y: startPos.y } : n))
+        );
       }
 
       setDraggingNodeId(null);
       dragStartPosRef.current = null;
+      dragStartScreenPosRef.current = null;
+      hasDraggedRef.current = false;
     },
     [draggingNodeId, evaluation.crossingsCount, nodes, triggerSparks]
   );
@@ -413,39 +442,6 @@ export function TangleApp() {
       previousCrossingsRef.current = evaluation.crossingsCount;
     },
     [evaluation.crossingsCount, hasWon, nodes, triggerSparks]
-  );
-
-  // Tap-to-move fallback: clicking board moves the selected pin
-  const handleBoardClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (hasWon || !selectedNodeId || !containerRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-      const rawX = (e.clientX - rect.left) / rect.width;
-      const rawY = (e.clientY - rect.top) / rect.height;
-
-      const clampedX = Math.max(0.08, Math.min(0.92, rawX));
-      const clampedY = Math.max(0.08, Math.min(0.92, rawY));
-
-      const currentNode = nodes.find((n) => n.id === selectedNodeId);
-      if (!currentNode) return;
-
-      // Push to undo stack
-      setUndoStack((prev) => [...prev, nodes.map((n) => ({ ...n }))]);
-      setNodes((prev) =>
-        prev.map((n) => (n.id === selectedNodeId ? { ...n, x: clampedX, y: clampedY } : n))
-      );
-      setMoveCount((c) => c + 1);
-      tangleSounds.playDrop();
-
-      if (evaluation.crossingsCount < previousCrossingsRef.current) {
-        tangleSounds.playUncross(evaluation.crossingsCount);
-        triggerSparks(clampedX * 1000, clampedY * 1000);
-      }
-      previousCrossingsRef.current = evaluation.crossingsCount;
-      setSelectedNodeId(null);
-    },
-    [evaluation.crossingsCount, hasWon, nodes, selectedNodeId, triggerSparks]
   );
 
   // Undo move
@@ -670,7 +666,6 @@ export function TangleApp() {
       <div
         ref={containerRef}
         className="board-container"
-        onClick={handleBoardClick}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
@@ -830,25 +825,30 @@ export function TangleApp() {
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
               ) : (
-                <div className="snoo-avatar-fallback">👤</div>
+                <div className="snoo-avatar-fallback">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
               )}
-              <span className="result-title">Knot untangled!</span>
+              <span className="result-title">Knot untangled</span>
             </div>
-            <span className="result-stars">
-              {stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐'}
+            <span className="result-rating">
+              {stars === 3 ? 'Optimal efficiency' : stars === 2 ? 'Par solution' : 'Solved'}
             </span>
           </div>
 
           <p>
             Solved in <strong>{moveCount} moves</strong> ({Math.floor(elapsedSeconds / 60)}m {elapsedSeconds % 60}s) with zero intersecting lines. Par target was {level.parMoves} moves.
             {userDailyRank !== undefined && (
-              <span style={{ display: 'block', marginTop: '4px', color: '#38bdf8', fontWeight: 600 }}>
-                🏆 You ranked #{userDailyRank} on r/{context.subredditName ?? 'tangle_daily'} today!
+              <span style={{ display: 'block', marginTop: '6px', color: '#94a3b8', fontSize: '12px' }}>
+                Rank #{userDailyRank} on r/{context.subredditName ?? 'tangle_daily'} today
               </span>
             )}
             {flairAwarded && (
-              <span style={{ display: 'block', marginTop: '4px', color: '#4ade80', fontSize: '0.85rem' }}>
-                🏷️ Subreddit flair updated: <strong>{flairAwarded}</strong>
+              <span style={{ display: 'block', marginTop: '4px', color: '#6ee7b7', fontSize: '12px' }}>
+                Subreddit flair: <strong>{flairAwarded}</strong>
               </span>
             )}
           </p>
@@ -922,18 +922,23 @@ export function TangleApp() {
             ) : (
               <div className="leaderboard-list">
                 {leaderboard.map((entry) => {
-                  const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+                  const rankClass = entry.rank === 1 ? 'rank-gold' : entry.rank === 2 ? 'rank-silver' : entry.rank === 3 ? 'rank-bronze' : 'rank-default';
                   return (
                     <div
                       key={entry.username}
                       className={`leaderboard-row ${entry.rank === userDailyRank ? 'highlight-user' : ''}`}
                     >
                       <div className="leaderboard-left">
-                        <span className="leaderboard-rank-icon">{medal}</span>
+                        <span className={`leaderboard-rank-num ${rankClass}`}>{entry.rank}</span>
                         {entry.avatarUrl ? (
                           <img src={entry.avatarUrl} alt="" className="snoo-avatar-mini" />
                         ) : (
-                          <div className="snoo-avatar-fallback">👤</div>
+                          <div className="snoo-avatar-fallback">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                          </div>
                         )}
                         <div className="leaderboard-name-box">
                           <span className="leaderboard-username">u/{entry.username}</span>
