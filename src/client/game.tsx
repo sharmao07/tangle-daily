@@ -26,6 +26,8 @@ interface Spark {
   vy: number;
 }
 
+export type TangleTheme = 'dark' | 'light' | 'blueprint';
+
 export function TangleApp() {
   const todayDayNumber = useMemo(() => calculateDayNumber(), []);
   const [currentDay, setCurrentDay] = useState<number>(todayDayNumber);
@@ -45,6 +47,7 @@ export function TangleApp() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showTensionHint, setShowTensionHint] = useState<boolean>(false);
+  const [usedHint, setUsedHint] = useState<boolean>(false);
   const [sparks, setSparks] = useState<Spark[]>([]);
 
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -77,12 +80,41 @@ export function TangleApp() {
 
   const filterId = useId();
 
+  const [theme, setTheme] = useState<TangleTheme>(() => {
+    try {
+      const saved = localStorage.getItem('tangle_theme');
+      if (saved === 'light' || saved === 'blueprint' || saved === 'dark') return saved;
+    } catch {
+      // Ignore
+    }
+    return 'dark';
+  });
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((curr) => (curr === msg ? null : curr));
     }, 3200);
   }, []);
+
+  const cycleTheme = useCallback(() => {
+    setTheme((curr) => {
+      const next: TangleTheme = curr === 'dark' ? 'light' : curr === 'light' ? 'blueprint' : 'dark';
+      try {
+        localStorage.setItem('tangle_theme', next);
+      } catch {
+        // Ignore
+      }
+      const label =
+        next === 'dark'
+          ? 'Architectural Graphite'
+          : next === 'light'
+          ? 'Light Parchment'
+          : 'Blueprint Navy';
+      showToast(`Theme: ${label}`);
+      return next;
+    });
+  }, [showToast]);
 
   // Timer interval: ticks while actively untangling
   useEffect(() => {
@@ -154,6 +186,7 @@ export function TangleApp() {
     setDraggingNodeId(null);
     setSelectedNodeId(null);
     setShowTensionHint(false);
+    setUsedHint(false);
     setShowVictoryRipple(false);
     setSparks([]);
     setShowArchiveModal(false);
@@ -326,6 +359,7 @@ export function TangleApp() {
       if (!hasDraggedRef.current) {
         hasDraggedRef.current = true;
         tangleSounds.playGrab();
+        tangleSounds.startTensionDrone();
       }
 
       const rect = containerRef.current.getBoundingClientRect();
@@ -336,16 +370,24 @@ export function TangleApp() {
       const clampedX = Math.max(0.08, Math.min(0.92, rawX));
       const clampedY = Math.max(0.08, Math.min(0.92, rawY));
 
+      const tensionRatio = Math.min(
+        1,
+        evaluation.crossingsCount / Math.max(1, level.initialCrossings)
+      );
+      tangleSounds.updateTensionDrone(tensionRatio);
+
       setNodes((prev) =>
         prev.map((n) => (n.id === draggingNodeId ? { ...n, x: clampedX, y: clampedY } : n))
       );
     },
-    [draggingNodeId, hasWon]
+    [draggingNodeId, evaluation.crossingsCount, hasWon, level.initialCrossings]
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!draggingNodeId) return;
+
+      tangleSounds.stopTensionDrone();
 
       try {
         (e.target as Element).releasePointerCapture(e.pointerId);
@@ -469,6 +511,7 @@ export function TangleApp() {
     setDraggingNodeId(null);
     setSelectedNodeId(null);
     setShowTensionHint(false);
+    setUsedHint(false);
     setShowVictoryRipple(false);
   }, [level]);
 
@@ -477,6 +520,7 @@ export function TangleApp() {
     setShowTensionHint((prev) => {
       const next = !prev;
       if (next) {
+        setUsedHint(true);
         showToast('Highlighted pin connects to the most crossed threads');
       }
       return next;
@@ -502,18 +546,94 @@ export function TangleApp() {
     return 1000 + Math.max(0, level.parMoves - moveCount) * 150 + level.nodes.length * 50;
   }, [level.nodes.length, level.parMoves, moveCount]);
 
-  // Reddit Share
+  // Player Mastery Accolades
+  const accolades = useMemo(() => {
+    if (!hasWon) return [];
+    const list: { id: string; name: string; desc: string; icon: string }[] = [];
+    if (moveCount <= level.parMoves) {
+      list.push({ id: 'pure_geo', name: 'Pure Geometry', desc: 'Solved at or below Par', icon: '📐' });
+    }
+    if (elapsedSeconds < 45 && !usedHint) {
+      list.push({ id: 'swift_hand', name: 'Swift Hand', desc: 'Solved in under 45s without hints', icon: '⚡' });
+    }
+    if (!usedHint) {
+      list.push({ id: 'harmonic', name: 'Harmonic Untangle', desc: 'Solved with zero hints', icon: '✨' });
+    }
+    if (currentStreak >= 7) {
+      list.push({ id: 'iron_thread', name: 'Iron Thread', desc: '7+ day streak maintained', icon: '🛡️' });
+    }
+    return list;
+  }, [hasWon, moveCount, level.parMoves, elapsedSeconds, usedHint, currentStreak]);
+
+  // Reddit Spoiler Comment Format
+  const handleShareSpoiler = useCallback(() => {
+    const starText = stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐';
+    const paddedDay = currentDay.toString().padStart(3, '0');
+    const subreddit =
+      typeof context !== 'undefined' && context?.subredditName
+        ? context.subredditName
+        : 'tangle_daily';
+    const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60)
+      .toString()
+      .padStart(2, '0')}s`;
+    const accoladeText = accolades.map((a) => `[${a.icon} ${a.name}]`).join(' ');
+
+    const shareText = [
+      `Tangle Daily Knot #${paddedDay}: ${level.title} ${starText}`,
+      `Solved in ${moveCount} moves (Par: ${level.parMoves}) · ${timeFormatted}`,
+      accoladeText ? `Accolades: ${accoladeText}` : '',
+      `Score: ${score.toLocaleString()} · Rank: ${userRank}`,
+      '',
+      `>!Strategy: Untangled the perimeter nodes into planar order, resolving all ${level.initialCrossings} initial crossings.!<`,
+      '',
+      `Play today on r/${subreddit}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    navigator.clipboard
+      .writeText(shareText)
+      .then(() => {
+        showToast('Copied spoiler-tagged Reddit comment to clipboard!');
+      })
+      .catch(() => {
+        showToast('Recorded knot solve. Ready to share.');
+      });
+  }, [
+    stars,
+    currentDay,
+    level.title,
+    level.parMoves,
+    level.initialCrossings,
+    moveCount,
+    elapsedSeconds,
+    accolades,
+    score,
+    userRank,
+    showToast,
+  ]);
+
+  // Reddit Compact Scorecard
   const handleShare = useCallback(() => {
     const starText = stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐';
     const paddedDay = currentDay.toString().padStart(3, '0');
-    const subreddit = (typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'tangle_daily';
-    const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toString().padStart(2, '0')}s`;
+    const subreddit =
+      typeof context !== 'undefined' && context?.subredditName
+        ? context.subredditName
+        : 'tangle_daily';
+    const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60)
+      .toString()
+      .padStart(2, '0')}s`;
     const rankLine = userDailyRank !== undefined ? ` · Daily Rank: #${userDailyRank}` : '';
+    const accoladeText =
+      accolades.length > 0 ? ` · Accolades: ${accolades.map((a) => a.name).join(', ')}` : '';
 
     const shareText = [
       `TANGLE #${paddedDay} · Daily Knot ${starText}`,
-      `Rank: ${userRank}${currentStreak > 0 ? ` · Streak: ${currentStreak} day${currentStreak === 1 ? '' : 's'}` : ''}${rankLine}`,
-      `Solved in ${moveCount} moves (Par: ${level.parMoves}) · ${timeFormatted}`,
+      `Rank: ${userRank}${
+        currentStreak > 0 ? ` · Streak: ${currentStreak} day${currentStreak === 1 ? '' : 's'}` : ''
+      }${rankLine}`,
+      `Solved in ${moveCount} moves (Par: ${level.parMoves}) · ${timeFormatted}${accoladeText}`,
       `Crossings: ${level.initialCrossings} ➔ 0 · Score: ${score.toLocaleString()}`,
       '',
       `Untangle today on r/${subreddit}`,
@@ -522,15 +642,28 @@ export function TangleApp() {
     navigator.clipboard
       .writeText(shareText)
       .then(() => {
-        showToast('Copied knot record to clipboard. Paste into Reddit comments.');
+        showToast('Copied knot scorecard to clipboard. Paste into Reddit comments.');
       })
       .catch(() => {
         showToast('Recorded knot solve. Share to Reddit.');
       });
-  }, [stars, currentDay, userRank, currentStreak, userDailyRank, moveCount, level.parMoves, elapsedSeconds, level.initialCrossings, score, showToast]);
+  }, [
+    stars,
+    currentDay,
+    userRank,
+    currentStreak,
+    userDailyRank,
+    accolades,
+    moveCount,
+    level.parMoves,
+    elapsedSeconds,
+    level.initialCrossings,
+    score,
+    showToast,
+  ]);
 
   return (
-    <main className="tangle-app">
+    <main className="tangle-app" data-theme={theme}>
       {/* Toast */}
       {toastMessage && <div className="toast-box">{toastMessage}</div>}
 
@@ -547,6 +680,43 @@ export function TangleApp() {
         </div>
 
         <div className="header-meta">
+          <button
+            className="icon-btn"
+            onClick={cycleTheme}
+            aria-label="Cycle visual theme"
+            title={`Visual theme: ${
+              theme === 'dark'
+                ? 'Architectural Graphite'
+                : theme === 'light'
+                ? 'Light Parchment'
+                : 'Blueprint Navy'
+            }`}
+          >
+            {theme === 'dark' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : theme === 'light' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+            )}
+          </button>
+
           <button
             className="icon-btn"
             onClick={toggleSound}
@@ -854,9 +1024,28 @@ export function TangleApp() {
             )}
           </p>
 
+          {/* Mastery Accolades */}
+          {accolades.length > 0 && (
+            <div className="accolades-shelf">
+              {accolades.map((acc) => (
+                <div key={acc.id} className="accolade-chip" title={acc.desc}>
+                  <span className="accolade-icon">{acc.icon}</span>
+                  <span className="accolade-name">{acc.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="result-actions">
-            <button className="primary-btn" onClick={handleShare}>
-              Share record to Reddit comments
+            <button className="primary-btn" onClick={handleShareSpoiler}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>Copy Reddit comment</span>
+            </button>
+
+            <button className="action-btn" onClick={handleShare} style={{ flex: '1', justifyContent: 'center' }}>
+              <span>Copy scorecard</span>
             </button>
 
             <button className="secondary-link-btn" onClick={() => setShowLeaderboardModal(true)}>

@@ -4,6 +4,8 @@
 class TangleSoundEngine {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private droneOsc: OscillatorNode | null = null;
+  private droneGain: GainNode | null = null;
 
   constructor() {
     try {
@@ -46,6 +48,7 @@ class TangleSoundEngine {
 
   // Tactile wooden peg lift
   public playPinLift() {
+    this.playHaptic(8);
     if (this.muted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -138,6 +141,7 @@ class TangleSoundEngine {
 
   // Delicate metallic chime when remaining crossings decrease
   public playUncrossStep(remaining: number) {
+    this.playHaptic(14);
     if (this.muted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -171,6 +175,7 @@ class TangleSoundEngine {
 
   // Radiant celestial major 9th chord on 0 crossings
   public playVictoryChord() {
+    this.playHaptic([25, 40, 50, 40, 90]);
     if (this.muted) return;
     this.initCtx();
     if (!this.ctx) return;
@@ -198,6 +203,91 @@ class TangleSoundEngine {
         osc.start(now + idx * 0.06);
         osc.stop(now + idx * 0.06 + 1.0);
       });
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Dynamic tension sub-bass drone while dragging
+  public startTensionDrone() {
+    if (this.muted) return;
+    this.initCtx();
+    if (!this.ctx || this.droneOsc) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(65, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(260, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.022, now + 0.05);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      this.droneOsc = osc;
+      this.droneGain = gain;
+    } catch {
+      // Ignore
+    }
+  }
+
+  public updateTensionDrone(tensionRatio: number) {
+    if (this.muted || !this.ctx || !this.droneOsc || !this.droneGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const clamped = Math.max(0, Math.min(1, tensionRatio));
+      const targetFreq = 65 + clamped * 45; // 65Hz to 110Hz
+      const targetGain = 0.012 + clamped * 0.025;
+
+      this.droneOsc.frequency.setTargetAtTime(targetFreq, now, 0.04);
+      this.droneGain.gain.setTargetAtTime(targetGain, now, 0.04);
+    } catch {
+      // Ignore
+    }
+  }
+
+  public stopTensionDrone() {
+    if (!this.ctx || !this.droneGain) {
+      this.droneOsc = null;
+      this.droneGain = null;
+      return;
+    }
+    try {
+      const now = this.ctx.currentTime;
+      this.droneGain.gain.setTargetAtTime(0.0001, now, 0.03);
+      const osc = this.droneOsc;
+      setTimeout(() => {
+        try {
+          osc?.stop();
+          osc?.disconnect();
+        } catch {
+          // Ignore
+        }
+      }, 50);
+    } catch {
+      // Ignore
+    } finally {
+      this.droneOsc = null;
+      this.droneGain = null;
+    }
+  }
+
+  // Cross-platform mobile haptic feedback
+  public playHaptic(pattern: number | number[] = 10) {
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(pattern);
+      }
     } catch {
       // Ignore
     }
