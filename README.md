@@ -10,8 +10,8 @@
 - **GitHub Repository:** [github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
 - **Developer / Pilot:** u/shaemaondc
 - **Devvit App Listing:** [developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
-- **Demo Subreddit:** [r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-- **Deployed Version:** `v0.0.9` (Active on `r/windward_daily_dev`)
+- **Demo Subreddit:** [r/tangle_daily](https://www.reddit.com/r/tangle_daily)
+- **Deployed Version:** `v0.0.9` (Active on `r/tangle_daily`)
 
 ---
 
@@ -65,7 +65,7 @@ Tangle is **not a grid game**. It is an organic, tactile planar knot puzzle grou
   Solved in 4 moves (Par: 4) · 0m 38s
   Crossings: 9 ➔ 0 · Score: 1,400
 
-  Untangle today on r/windward_daily_dev
+  Untangle today on r/tangle_daily
   ```
 
 ---

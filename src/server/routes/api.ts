@@ -257,7 +257,7 @@ api.post('/complete', async (c) => {
   try {
     const body = await c.req.json<SubmitTangleRequest>();
     const username = (await reddit.getCurrentUsername()) ?? 'wanderer';
-    const subreddit = context.subredditName ?? 'windward_daily_dev';
+    const subreddit = context.subredditName ?? 'tangle_daily';
 
     let avatarUrl: string | null = null;
     try {

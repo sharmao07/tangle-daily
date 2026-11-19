@@ -44,6 +44,6 @@
     "build": "vite build"
   },
   "dev": {
-    "subreddit": "windward_daily_dev"
+    "subreddit": "tangle_daily"
   }
 }

@@ -136,7 +136,7 @@ export const Splash = () => {
         </button>
 
         <div style={{ marginTop: '14px', fontSize: '11px', color: '#637180' }}>
-          r/{context.subredditName ?? 'windward_daily_dev'}
+          r/{context.subredditName ?? 'tangle_daily'}
         </div>
       </div>
     </div>
