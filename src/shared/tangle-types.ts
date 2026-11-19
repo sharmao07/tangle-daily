@@ -32,8 +32,28 @@ export type DailyCommunityStats = {
   averageMoves: number;
 };
 
+export type WeeklyDayStatus = {
+  dayNumber: number;
+  dayLabel: string; // "Mon", "Tue", etc.
+  isToday: boolean;
+  completed: boolean;
+  score?: number;
+  moves?: number;
+};
+
+export type LeaderboardEntry = {
+  username: string;
+  rank: number;
+  score: number;
+  moves: number;
+  timeSeconds: number;
+  rankTitle: string;
+  avatarUrl?: string | null;
+};
+
 export type UserStats = {
   username: string;
+  avatarUrl?: string | null;
   currentStreak: number;
   maxStreak: number;
   totalSolved: number;
@@ -42,17 +62,21 @@ export type UserStats = {
   todayMoves?: number | undefined;
   todayTimeSeconds?: number | undefined;
   rankTitle: string;
+  userDailyRank?: number | undefined;
+  weeklyHistory?: WeeklyDayStatus[];
 };
 
 export type TangleInitResponse = {
   type: 'tangle_init';
   postId: string;
   username: string;
+  avatarUrl?: string | null;
   dayNumber: number;
   dateString: string;
   level: TangleLevel;
   communityStats: DailyCommunityStats;
   userStats: UserStats;
+  leaderboard: LeaderboardEntry[];
 };
 
 export type SubmitTangleRequest = {
@@ -73,6 +97,8 @@ export type SubmitTangleResponse = {
   totalKnotsUntangled: number;
   shareText: string;
   rankTitle: string;
+  userDailyRank: number;
+  leaderboard: LeaderboardEntry[];
 };
 
 export function getUserRank(streak: number): string {

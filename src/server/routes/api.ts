@@ -5,10 +5,12 @@ import {
   getTangleLevelForDay,
   getUserRank,
   type DailyCommunityStats,
+  type LeaderboardEntry,
   type SubmitTangleRequest,
   type SubmitTangleResponse,
   type TangleInitResponse,
   type UserStats,
+  type WeeklyDayStatus,
 } from '../../shared/api';
 
 type ErrorResponse = {
@@ -27,6 +29,7 @@ function generateTangleShareText(
   streak: number,
   rankTitle: string,
   timeSeconds: number | undefined,
+  dailyRank: number | undefined,
   subreddit: string
 ): string {
   const stars = moves <= parMoves ? '⭐⭐⭐' : moves <= parMoves + 2 ? '⭐⭐' : '⭐';
@@ -35,15 +38,101 @@ function generateTangleShareText(
     timeSeconds !== undefined && timeSeconds > 0
       ? ` · ${Math.floor(timeSeconds / 60)}m ${(timeSeconds % 60).toString().padStart(2, '0')}s`
       : '';
+  const rankLine = dailyRank !== undefined ? ` · Daily Rank: #${dailyRank}` : '';
 
   return [
     `TANGLE #${paddedDay} · Daily Knot ${stars}`,
-    `Rank: ${rankTitle}${streak > 0 ? ` · Streak: ${streak} day${streak === 1 ? '' : 's'}` : ''}`,
+    `Rank: ${rankTitle}${streak > 0 ? ` · Streak: ${streak} day${streak === 1 ? '' : 's'}` : ''}${rankLine}`,
     `Solved in ${moves} moves (Par: ${parMoves})${timeFormatted}`,
     `Crossings: ${initialCrossings} ➔ 0 · Score: ${score.toLocaleString()}`,
     '',
     `Untangle today on r/${subreddit}`,
   ].join('\n');
+}
+
+async function getDailyLeaderboard(dayNumber: number): Promise<LeaderboardEntry[]> {
+  try {
+    const key = `tangle:daily:${dayNumber}:leaderboard`;
+    const range = await redis.zRange(key, 0, 9, { by: 'rank', reverse: true }).catch(() => []);
+    if (!range || range.length === 0) return [];
+
+    const entries: LeaderboardEntry[] = [];
+    for (let i = 0; i < range.length; i++) {
+      const item = range[i]!;
+      const user = item.member;
+      const score = item.score;
+      const solverRaw = await redis.get(`tangle:daily:${dayNumber}:solver:${user}`).catch(() => null);
+      let moves = 0;
+      let timeSeconds = 0;
+      let rankTitle = 'Wanderer';
+      let avatarUrl: string | null = null;
+
+      if (solverRaw) {
+        try {
+          const parsed = JSON.parse(solverRaw);
+          moves = parsed.moves ?? 0;
+          timeSeconds = parsed.timeSeconds ?? 0;
+          rankTitle = parsed.rankTitle ?? 'Wanderer';
+          avatarUrl = parsed.avatarUrl ?? null;
+        } catch {
+          // Ignore
+        }
+      }
+
+      entries.push({
+        username: user,
+        rank: i + 1,
+        score,
+        moves,
+        timeSeconds,
+        rankTitle,
+        avatarUrl,
+      });
+    }
+    return entries;
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    return [];
+  }
+}
+
+async function getWeeklyHistory(username: string, dayNumber: number): Promise<WeeklyDayStatus[]> {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const list: WeeklyDayStatus[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = Math.max(1, dayNumber - i);
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dayLabel = dayNames[date.getDay()] ?? '';
+
+    let completed = false;
+    let score: number | undefined;
+    let moves: number | undefined;
+
+    const recordRaw = await redis.get(`tangle:user:${username}:day:${d}`).catch(() => null);
+    if (recordRaw) {
+      try {
+        const parsed = JSON.parse(recordRaw);
+        completed = parsed.won === true;
+        score = parsed.score;
+        moves = parsed.moves;
+      } catch {
+        // Ignore
+      }
+    }
+
+    list.push({
+      dayNumber: d,
+      dayLabel,
+      isToday: i === 0,
+      completed,
+      score,
+      moves,
+    });
+  }
+
+  return list;
 }
 
 api.get('/init', async (c) => {
@@ -60,6 +149,14 @@ api.get('/init', async (c) => {
 
     const level = getTangleLevelForDay(dayNumber);
 
+    // Fetch avatar URL from Reddit
+    let avatarUrl: string | null = null;
+    try {
+      avatarUrl = (await reddit.getSnoovatarUrl(username)) ?? null;
+    } catch {
+      // Fallback
+    }
+
     // Fetch Redis community stats
     const solvesRaw = await redis.get(`tangle:daily:${dayNumber}:solved`).catch(() => null);
     const totalSolved = solvesRaw ? parseInt(solvesRaw, 10) : 0;
@@ -74,6 +171,7 @@ api.get('/init', async (c) => {
     const userStatsRaw = await redis.get(`tangle:user:${username}:stats`).catch(() => null);
     let userStats: UserStats = {
       username,
+      avatarUrl,
       currentStreak: 0,
       maxStreak: 0,
       totalSolved: 0,
@@ -83,7 +181,7 @@ api.get('/init', async (c) => {
 
     if (userStatsRaw) {
       try {
-        userStats = { ...userStats, ...JSON.parse(userStatsRaw) };
+        userStats = { ...userStats, ...JSON.parse(userStatsRaw), avatarUrl };
       } catch (e) {
         console.error('Error parsing user stats:', e);
       }
@@ -104,15 +202,28 @@ api.get('/init', async (c) => {
       }
     }
 
+    // Fetch weekly 7-day habit tracker
+    const weeklyHistory = await getWeeklyHistory(username, dayNumber);
+    userStats.weeklyHistory = weeklyHistory;
+
+    // Fetch leaderboard & user rank
+    const leaderboard = await getDailyLeaderboard(dayNumber);
+    const key = `tangle:daily:${dayNumber}:leaderboard`;
+    const rankLow = await redis.zRank(key, username).catch(() => undefined);
+    const totalInLeaderboard = await redis.zCard(key).catch(() => 0);
+    userStats.userDailyRank = rankLow !== undefined ? totalInLeaderboard - rankLow : undefined;
+
     return c.json<TangleInitResponse>({
       type: 'tangle_init',
       postId: postId ?? 'unknown',
       username,
+      avatarUrl,
       dayNumber,
       dateString,
       level,
       communityStats,
       userStats,
+      leaderboard,
     });
   } catch (error) {
     console.error('Tangle API Init Error:', error);
@@ -148,6 +259,13 @@ api.post('/complete', async (c) => {
     const username = (await reddit.getCurrentUsername()) ?? 'wanderer';
     const subreddit = context.subredditName ?? 'windward_daily_dev';
 
+    let avatarUrl: string | null = null;
+    try {
+      avatarUrl = (await reddit.getSnoovatarUrl(username)) ?? null;
+    } catch {
+      // Fallback
+    }
+
     const { dayNumber, won, moves, parMoves, initialCrossings, score, timeSeconds } = body;
 
     // Increment community totals
@@ -160,6 +278,7 @@ api.post('/complete', async (c) => {
     const userStatsRaw = await redis.get(`tangle:user:${username}:stats`).catch(() => null);
     let userStats: UserStats = {
       username,
+      avatarUrl,
       currentStreak: 0,
       maxStreak: 0,
       totalSolved: 0,
@@ -185,6 +304,7 @@ api.post('/complete', async (c) => {
 
     const updatedUserStats: UserStats = {
       username,
+      avatarUrl,
       currentStreak: newStreak,
       maxStreak,
       totalSolved,
@@ -208,9 +328,30 @@ api.post('/complete', async (c) => {
           completedAt: new Date().toISOString(),
         })
       ).catch(() => null),
+      // Save solver details for leaderboard lookup
+      redis.set(
+        `tangle:daily:${dayNumber}:solver:${username}`,
+        JSON.stringify({
+          username,
+          score,
+          moves,
+          timeSeconds,
+          rankTitle,
+          avatarUrl,
+        })
+      ).catch(() => null),
+      // Add member to Redis Sorted Set
+      won
+        ? redis.zAdd(`tangle:daily:${dayNumber}:leaderboard`, { member: username, score }).catch(() => null)
+        : Promise.resolve(),
     ]);
 
     const communityTotalRaw = await redis.get('tangle:global:solved').catch(() => '0');
+    const updatedLeaderboard = await getDailyLeaderboard(dayNumber);
+
+    const rankLow = await redis.zRank(`tangle:daily:${dayNumber}:leaderboard`, username).catch(() => undefined);
+    const totalInSet = await redis.zCard(`tangle:daily:${dayNumber}:leaderboard`).catch(() => 1);
+    const userDailyRank = rankLow !== undefined ? totalInSet - rankLow : 1;
 
     const shareText = generateTangleShareText(
       dayNumber,
@@ -221,6 +362,7 @@ api.post('/complete', async (c) => {
       newStreak,
       rankTitle,
       timeSeconds,
+      userDailyRank,
       subreddit
     );
 
@@ -232,6 +374,8 @@ api.post('/complete', async (c) => {
       totalKnotsUntangled: communityTotalRaw ? parseInt(communityTotalRaw, 10) : 1,
       shareText,
       rankTitle,
+      userDailyRank,
+      leaderboard: updatedLeaderboard,
     });
   } catch (error) {
     console.error('Error submitting knot solve:', error);

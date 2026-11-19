@@ -41,13 +41,27 @@ export const Splash = () => {
   const rankTitle = data?.userStats?.rankTitle ?? 'Wanderer';
   const todayDone = data?.userStats?.todayCompleted ?? false;
   const levelTitle = data?.level?.title ?? 'Daily Planar Knot';
+  const avatarUrl = data?.avatarUrl || data?.userStats?.avatarUrl;
+  const weeklyHistory = data?.userStats?.weeklyHistory ?? [];
 
   return (
     <div className="splash-container">
       <div className="splash-card">
-        <span className="splash-badge">Daily Knot #{paddedDay} · {dateString}</span>
+        {/* Header row with avatar & day badge */}
+        <div className="splash-header-row">
+          <div className="splash-user-badge">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
+            ) : (
+              <div className="snoo-avatar-fallback">👤</div>
+            )}
+            <span className="splash-rank-tag">{rankTitle}</span>
+          </div>
+          <span className="splash-badge">Knot #{paddedDay}</span>
+        </div>
+
         <h1 className="splash-title">Tangle</h1>
-        <p className="splash-subtitle">{levelTitle}</p>
+        <p className="splash-subtitle">{levelTitle} · {dateString}</p>
 
         {/* Animated preview knot */}
         <div className="splash-preview-box">
@@ -80,8 +94,26 @@ export const Splash = () => {
           </svg>
         </div>
 
+        {/* 7-Day Habit Streak Tracker */}
+        {weeklyHistory.length > 0 && (
+          <div className="weekly-habit-strip">
+            {weeklyHistory.map((day) => (
+              <div
+                key={day.dayNumber}
+                className={`habit-cell ${day.completed ? 'completed' : ''} ${day.isToday ? 'today' : ''}`}
+                title={`Knot #${day.dayNumber} (${day.dayLabel})${day.completed ? ': Untangled' : ''}`}
+              >
+                <span className="habit-day">{day.dayLabel}</span>
+                <div className="habit-dot">
+                  {day.completed ? '✓' : day.isToday ? '•' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <p className="splash-desc">
-          Drag the pins to untangle the threads. Leave zero lines crossing.
+          Drag pins until zero lines cross. A calm topological daily puzzle.
         </p>
 
         <div className="splash-stats">
@@ -89,17 +121,10 @@ export const Splash = () => {
             <span className="splash-stat-num">{totalSolved.toLocaleString()}</span>
             <span className="splash-stat-label">Untangled today</span>
           </div>
-          {streak > 0 ? (
-            <div>
-              <span className="splash-stat-num">{streak} days</span>
-              <span className="splash-stat-label">{rankTitle}</span>
-            </div>
-          ) : (
-            <div>
-              <span className="splash-stat-num">Planar</span>
-              <span className="splash-stat-label">Topology</span>
-            </div>
-          )}
+          <div>
+            <span className="splash-stat-num">{streak} {streak === 1 ? 'day' : 'days'}</span>
+            <span className="splash-stat-label">Your streak</span>
+          </div>
         </div>
 
         <button
@@ -107,10 +132,10 @@ export const Splash = () => {
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
           autoFocus
         >
-          {todayDone ? 'Play again or practice' : "Untangle today's knot"}
+          {todayDone ? 'Practice or replay' : "Untangle today's knot"}
         </button>
 
-        <div style={{ marginTop: '16px', fontSize: '11px', color: '#637180' }}>
+        <div style={{ marginTop: '14px', fontSize: '11px', color: '#637180' }}>
           r/{context.subredditName ?? 'windward_daily_dev'}
         </div>
       </div>

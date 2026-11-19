@@ -728,3 +728,205 @@ button {
   border: 1px solid #243444;
   margin-left: 6px;
 }
+
+/* ============================================================
+   REDDIT NATIVE INTEGRATION: SNOOVATARS, LEADERBOARD, HABITS
+   ============================================================ */
+
+/* Snoovatar Avatars */
+.snoo-avatar-mini {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #334155;
+  background: #1e293b;
+  object-fit: cover;
+}
+
+.snoo-avatar-med {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid #475569;
+  background: #1e293b;
+  object-fit: cover;
+}
+
+.snoo-avatar-fallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+/* Splash Header Row */
+.splash-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.splash-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.splash-rank-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+}
+
+/* 7-Day Habit Tracker Strip */
+.weekly-habit-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #141a22;
+  border: 1px solid #222b37;
+}
+
+.habit-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.habit-day {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.habit-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  background: #1e2530;
+  border: 1px solid #2d3748;
+  color: #64748b;
+  transition: all 150ms ease;
+}
+
+.habit-cell.today .habit-dot {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.habit-cell.completed .habit-dot {
+  background: #166534;
+  border-color: #22c55e;
+  color: #f0fdf4;
+  font-weight: 700;
+}
+
+/* Subreddit Leaderboard */
+.user-leaderboard-banner {
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #38bdf8;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #171d25;
+  border: 1px solid #242c38;
+  transition: background 120ms ease;
+}
+
+.leaderboard-row.highlight-user {
+  border-color: #38bdf8;
+  background: #132435;
+}
+
+.leaderboard-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leaderboard-rank-icon {
+  width: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.leaderboard-name-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.leaderboard-username {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.leaderboard-rank-title {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.leaderboard-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.leaderboard-score {
+  font-size: 13px;
+  font-weight: 650;
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-subtext {
+  font-size: 11px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty-leaderboard {
+  text-align: center;
+  padding: 24px 16px;
+  color: #8a9ba8;
+  font-size: 13px;
+}

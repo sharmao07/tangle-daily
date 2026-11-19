@@ -9,10 +9,12 @@ import {
   getTangleLevelForDay,
   getUserRank,
   type GraphNode,
+  type LeaderboardEntry,
   type SubmitTangleRequest,
   type SubmitTangleResponse,
   type TangleInitResponse,
   type TangleLevel,
+  type WeeklyDayStatus,
 } from '../shared/api';
 import { tangleSounds } from './tangle-audio';
 
@@ -56,14 +58,19 @@ export function TangleApp() {
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Community & user stats
+  // Community, user stats & leaderboard
   const [totalSolved, setTotalSolved] = useState<number>(3420);
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [maxStreak, setMaxStreak] = useState<number>(0);
   const [totalUntangled, setTotalUntangled] = useState<number>(0);
   const [userRank, setUserRank] = useState<string>(() => getUserRank(0));
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [userDailyRank, setUserDailyRank] = useState<number | undefined>(undefined);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [weeklyHistory, setWeeklyHistory] = useState<WeeklyDayStatus[]>([]);
 
   const filterId = useId();
 
@@ -103,11 +110,23 @@ export function TangleApp() {
           if (data.communityStats) {
             setTotalSolved(data.communityStats.totalSolved);
           }
+          if (data.avatarUrl || data.userStats?.avatarUrl) {
+            setAvatarUrl(data.avatarUrl || data.userStats?.avatarUrl || null);
+          }
+          if (data.leaderboard) {
+            setLeaderboard(data.leaderboard);
+          }
           if (data.userStats) {
             setCurrentStreak(data.userStats.currentStreak);
             setMaxStreak(data.userStats.maxStreak);
             setTotalUntangled(data.userStats.totalSolved);
             setUserRank(data.userStats.rankTitle || getUserRank(data.userStats.currentStreak));
+            if (data.userStats.userDailyRank !== undefined) {
+              setUserDailyRank(data.userStats.userDailyRank);
+            }
+            if (data.userStats.weeklyHistory) {
+              setWeeklyHistory(data.userStats.weeklyHistory);
+            }
           }
         }
       } catch (err) {
@@ -211,6 +230,12 @@ export function TangleApp() {
           }
           if (resp.rankTitle) {
             setUserRank(resp.rankTitle);
+          }
+          if (resp.userDailyRank !== undefined) {
+            setUserDailyRank(resp.userDailyRank);
+          }
+          if (resp.leaderboard) {
+            setLeaderboard(resp.leaderboard);
           }
         }
       } catch (err) {
@@ -482,10 +507,11 @@ export function TangleApp() {
     const paddedDay = currentDay.toString().padStart(3, '0');
     const subreddit = context.subredditName ?? 'windward_daily_dev';
     const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toString().padStart(2, '0')}s`;
+    const rankLine = userDailyRank !== undefined ? ` · Daily Rank: #${userDailyRank}` : '';
 
     const shareText = [
       `TANGLE #${paddedDay} · Daily Knot ${starText}`,
-      `Rank: ${userRank}${currentStreak > 0 ? ` · Streak: ${currentStreak} day${currentStreak === 1 ? '' : 's'}` : ''}`,
+      `Rank: ${userRank}${currentStreak > 0 ? ` · Streak: ${currentStreak} day${currentStreak === 1 ? '' : 's'}` : ''}${rankLine}`,
       `Solved in ${moveCount} moves (Par: ${level.parMoves}) · ${timeFormatted}`,
       `Crossings: ${level.initialCrossings} ➔ 0 · Score: ${score.toLocaleString()}`,
       '',
@@ -500,7 +526,7 @@ export function TangleApp() {
       .catch(() => {
         showToast('Recorded knot solve. Share to Reddit.');
       });
-  }, [stars, currentDay, userRank, currentStreak, moveCount, level.parMoves, elapsedSeconds, level.initialCrossings, score, showToast]);
+  }, [stars, currentDay, userRank, currentStreak, userDailyRank, moveCount, level.parMoves, elapsedSeconds, level.initialCrossings, score, showToast]);
 
   return (
     <main className="tangle-app">
@@ -510,7 +536,11 @@ export function TangleApp() {
       {/* Header */}
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
+          ) : (
+            <div className="brand-mark" />
+          )}
           <span className="brand-name">Tangle</span>
           <span className="archetype-tag">{level.archetype}</span>
         </div>
@@ -549,6 +579,23 @@ export function TangleApp() {
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
+
+          <button
+            className="icon-btn"
+            onClick={() => setShowLeaderboardModal(true)}
+            aria-label="Subreddit Leaderboard"
+            title="Subreddit Leaderboard"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+              <path d="M4 22h16" />
+              <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34" />
+              <path d="M18 14.66V17c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1v-2.34" />
+              <path d="M12 2v20" />
+              <path d="M6 4h12a2 2 0 0 1 2 2v4a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6V6a2 2 0 0 1 2-2Z" />
             </svg>
           </button>
 
@@ -775,7 +822,14 @@ export function TangleApp() {
       {hasWon && (
         <section className="result-card">
           <div className="result-header">
-            <span className="result-title">Knot untangled</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-mini" />
+              ) : (
+                <div className="snoo-avatar-fallback">👤</div>
+              )}
+              <span className="result-title">Knot untangled!</span>
+            </div>
             <span className="result-stars">
               {stars === 3 ? '⭐⭐⭐' : stars === 2 ? '⭐⭐' : '⭐'}
             </span>
@@ -783,6 +837,11 @@ export function TangleApp() {
 
           <p>
             Solved in <strong>{moveCount} moves</strong> ({Math.floor(elapsedSeconds / 60)}m {elapsedSeconds % 60}s) with zero intersecting lines. Par target was {level.parMoves} moves.
+            {userDailyRank !== undefined && (
+              <span style={{ display: 'block', marginTop: '4px', color: '#38bdf8', fontWeight: 600 }}>
+                🏆 You ranked #{userDailyRank} on r/{context.subredditName ?? 'windward_daily_dev'} today!
+              </span>
+            )}
           </p>
 
           <div className="result-actions">
@@ -790,8 +849,8 @@ export function TangleApp() {
               Share record to Reddit comments
             </button>
 
-            <button className="secondary-link-btn" onClick={() => setShowArchiveModal(true)}>
-              Untangle another past knot →
+            <button className="secondary-link-btn" onClick={() => setShowLeaderboardModal(true)}>
+              View Subreddit Leaderboard →
             </button>
           </div>
         </section>
@@ -821,6 +880,68 @@ export function TangleApp() {
               • Untangle within <strong>Par moves</strong> to earn 3 stars.<br />
               • Advance your rank from <em>Wanderer</em> to <em>Topology Grandmaster</em> by maintaining your daily streak!
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Subreddit Leaderboard Modal */}
+      {showLeaderboardModal && (
+        <div className="modal-backdrop" onClick={() => setShowLeaderboardModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title-row">
+              <h2>Subreddit Leaderboard</h2>
+              <button className="close-btn" onClick={() => setShowLeaderboardModal(false)}>
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px' }}>
+              Daily Knot #{currentDay} · r/{context.subredditName ?? 'windward_daily_dev'}
+            </p>
+
+            {userDailyRank !== undefined && (
+              <div className="user-leaderboard-banner">
+                <span>Your Standing Today</span>
+                <span>#{userDailyRank} Place</span>
+              </div>
+            )}
+
+            {leaderboard.length === 0 ? (
+              <div className="empty-leaderboard">
+                No scores submitted yet today. Untangle the knot to claim 1st place!
+              </div>
+            ) : (
+              <div className="leaderboard-list">
+                {leaderboard.map((entry) => {
+                  const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+                  return (
+                    <div
+                      key={entry.username}
+                      className={`leaderboard-row ${entry.rank === userDailyRank ? 'highlight-user' : ''}`}
+                    >
+                      <div className="leaderboard-left">
+                        <span className="leaderboard-rank-icon">{medal}</span>
+                        {entry.avatarUrl ? (
+                          <img src={entry.avatarUrl} alt="" className="snoo-avatar-mini" />
+                        ) : (
+                          <div className="snoo-avatar-fallback">👤</div>
+                        )}
+                        <div className="leaderboard-name-box">
+                          <span className="leaderboard-username">u/{entry.username}</span>
+                          <span className="leaderboard-rank-title">{entry.rankTitle}</span>
+                        </div>
+                      </div>
+                      <div className="leaderboard-right">
+                        <span className="leaderboard-score">{entry.score.toLocaleString()} pts</span>
+                        <span className="leaderboard-subtext">
+                          {entry.moves} moves · {Math.floor(entry.timeSeconds / 60)}m {entry.timeSeconds % 60}s
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -869,10 +990,43 @@ export function TangleApp() {
                 ✕
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-              <span className="user-rank-badge">{userRank}</span>
-              <span style={{ fontSize: '12px', color: '#8a9ba8' }}>Current Standing</span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Snoovatar" className="snoo-avatar-med" />
+              ) : (
+                <div className="snoo-avatar-fallback" style={{ width: '34px', height: '34px' }}>👤</div>
+              )}
+              <div>
+                <span className="user-rank-badge">{userRank}</span>
+                <span style={{ display: 'block', fontSize: '11px', color: '#8a9ba8', marginTop: '2px' }}>
+                  {currentStreak} Day Streak
+                </span>
+              </div>
             </div>
+
+            {/* 7-Day Habit Tracker */}
+            {weeklyHistory.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Weekly Habit Tracker
+                </span>
+                <div className="weekly-habit-strip" style={{ marginTop: '6px' }}>
+                  {weeklyHistory.map((day) => (
+                    <div
+                      key={day.dayNumber}
+                      className={`habit-cell ${day.completed ? 'completed' : ''} ${day.isToday ? 'today' : ''}`}
+                    >
+                      <span className="habit-day">{day.dayLabel}</span>
+                      <div className="habit-dot">
+                        {day.completed ? '✓' : day.isToday ? '•' : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <p>
               Current streak: <strong>{currentStreak} days</strong><br />
               Longest streak: <strong>{maxStreak} days</strong><br />
