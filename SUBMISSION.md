@@ -15,7 +15,7 @@
 * **GitHub Repository:** [https://github.com/sharmao07/tangle-daily](https://github.com/sharmao07/tangle-daily)
 * **Reddit Developer App Listing:** [https://developers.reddit.com/apps/windward-daily](https://developers.reddit.com/apps/windward-daily)
 * **Subreddit Community & Demo Post:** [https://www.reddit.com/r/windward_daily_dev](https://www.reddit.com/r/windward_daily_dev)
-* **Installed Version:** `v0.0.7` (Active on `r/windward_daily_dev`)
+* **Installed Version:** `v0.0.8` (Active on `r/windward_daily_dev`)
 
 ---
 
@@ -34,6 +34,10 @@ Tangle draws inspiration from classic string-and-pin physical puzzles. It offers
 * **Spark Particle Bursts & Victory Shockwave:** Disentangling an intersection triggers a delightful burst of spark particles; solving triggers an expanding green victory shockwave.
 * **Mathematical Tension Hint:** Highlights the pin connected to the greatest number of crossing threads, offering intuition without spoiling the solution.
 * **Procedural Soundscape:** Web Audio API delivers quiet wooden peg clicks on grab/drop, ascending pentatonic scale chimes as intersections decrease, and a radiant D Major 9 chord on zero crossings without downloading external sound assets.
+* **Subreddit Daily Leaderboard:** Powered by Devvit Redis Sorted Sets (`zAdd`, `zRange`), ranking the top 10 daily solvers across the subreddit by algorithmic score, move economy, and speedrun time with rank medals (🥇, 🥈, 🥉).
+* **Reddit Snoovatar Integration:** Uses Reddit's Avatar API (`reddit.getSnoovatarUrl`) to display real Snoovatar avatars on both the feed post preview and the in-game community leaderboard.
+* **Weekly Habit Streak Tracker:** Visual 7-day strip tracking the player's daily solves across Monday through Sunday.
+* **Live Speedrun Timer:** Real-time solving timer with second/millisecond accuracy and calibrated par-move benchmarks.
 * **Community Ledger & Streaks:** Uses Devvit Redis to track collective daily totals of knots untangled by the Reddit community, alongside player streaks and topological ranks (*Wanderer* to *Topology Grandmaster*).
 * **Spoiler-Free Reddit Comment Sharing:** One-click copy formats a clean result with rank, moves, par, time, crossings, and score designed for posting in Reddit discussion threads.
 * **Streaks, Records & Archive:** Tracks personal streaks and provides a 7-day archive for practice and replayability.
