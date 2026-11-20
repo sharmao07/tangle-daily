@@ -8,6 +8,7 @@ export const createPost = async () => {
 
   const post = await reddit.submitCustomPost({
     title: `Tangle Daily Knot #${paddedDay}: ${knot.title} · Planar Knot Puzzle`,
+    entry: 'default',
   });
 
   // Automated moderator topology briefing & discussion comment
