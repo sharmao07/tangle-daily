@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#111823" />
+      <stop offset="60%" stop-color="#0a0e14" />
+      <stop offset="100%" stop-color="#05070a" />
+    </radialGradient>
+
+    <!-- Blueprint Grid Pattern -->
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#1b2533" stroke-width="0.75" opacity="0.6" />
+    </pattern>
+
+    <!-- Thread Gradients -->
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="emerald-glow" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Pin Metal Gradient -->
+    <radialGradient id="pin-brass" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="40%" stop-color="#cbd5e1" />
+      <stop offset="85%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </radialGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg-grad)" />
+  <rect width="512" height="512" rx="112" fill="url(#grid)" />
+
+  <!-- Outer Drafting Frame Ring -->
+  <circle cx="256" cy="256" r="216" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.8" />
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#16202c" stroke-width="1" opacity="0.5" />
+
+  <!-- Corner Crosshairs -->
+  <g stroke="#334155" stroke-width="1.5" opacity="0.6">
+    <path d="M 64 54 L 64 74 M 54 64 L 74 64" />
+    <path d="M 448 54 L 448 74 M 438 64 L 458 64" />
+    <path d="M 64 438 L 64 458 M 54 448 L 74 448" />
+    <path d="M 448 438 L 448 458 M 438 448 L 458 448" />
+  </g>
+
+  <!-- Geometric Planar Knot Threads -->
+  <!-- Outer Harmonic Octagon Polygon -->
+  <polygon points="256,76 383,129 436,256 383,383 256,436 129,383 76,256 129,129"
+    fill="none" stroke="url(#cyan-glow)" stroke-width="5" stroke-linejoin="round" filter="url(#soft-glow)" opacity="0.9" />
+
+  <!-- Inner Interlocking Chords (Non-crossing planar harmony) -->
+  <line x1="256" y1="76" x2="256" y2="256" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" filter="url(#soft-glow)" />
+  <line x1="256" y1="256" x2="383" y2="129" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" filter="url(#soft-glow)" />
+  <line x1="256" y1="256" x2="383" y2="383" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" filter="url(#soft-glow)" />
+  <line x1="256" y1="256" x2="129" y2="383" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" filter="url(#soft-glow)" />
+  <line x1="256" y1="256" x2="129" y2="129" stroke="#34d399" stroke-width="4.5" stroke-linecap="round" filter="url(#soft-glow)" />
+
+  <line x1="129" y1="129" x2="76" y2="256" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+  <line x1="76" y1="256" x2="129" y2="383" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+  <line x1="383" y1="129" x2="436" y2="256" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+  <line x1="436" y1="256" x2="383" y2="383" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Center Focal Spark -->
+  <circle cx="256" cy="256" r="32" fill="#34d399" opacity="0.12" filter="url(#soft-glow)" />
+
+  <!-- Drafting Pins (Tactile Lathed Pegs) -->
+  <!-- Outer Pins -->
+  <g id="pins">
+    <!-- Center Pin -->
+    <g transform="translate(256, 256)">
+      <ellipse cx="2" cy="7" rx="18" ry="11" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="16" fill="#1e293b" stroke="#475569" stroke-width="2" />
+      <circle cx="0" cy="0" r="12" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="4.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 1 (Top) -->
+    <g transform="translate(256, 76)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 2 (Top-Right) -->
+    <g transform="translate(383, 129)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#34d399" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 3 (Right) -->
+    <g transform="translate(436, 256)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 4 (Bottom-Right) -->
+    <g transform="translate(383, 383)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#34d399" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 5 (Bottom) -->
+    <g transform="translate(256, 436)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 6 (Bottom-Left) -->
+    <g transform="translate(129, 383)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#34d399" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 7 (Left) -->
+    <g transform="translate(76, 256)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+
+    <!-- Node 8 (Top-Left) -->
+    <g transform="translate(129, 129)">
+      <ellipse cx="2" cy="6" rx="15" ry="9" fill="rgba(0,0,0,0.5)" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#34d399" stroke-width="2" />
+      <circle cx="0" cy="0" r="10.5" fill="url(#pin-brass)" />
+      <circle cx="0" cy="0" r="3.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+    </g>
+  </g>
+</svg>

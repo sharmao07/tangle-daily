@@ -241,13 +241,16 @@ class TangleSoundEngine {
     }
   }
 
-  public updateTensionDrone(tensionRatio: number) {
+  public updateTensionDrone(tensionRatio: number, stretchRatio: number = 0) {
     if (this.muted || !this.ctx || !this.droneOsc || !this.droneGain) return;
     try {
       const now = this.ctx.currentTime;
-      const clamped = Math.max(0, Math.min(1, tensionRatio));
-      const targetFreq = 65 + clamped * 45; // 65Hz to 110Hz
-      const targetGain = 0.012 + clamped * 0.025;
+      const clampedTension = Math.max(0, Math.min(1, tensionRatio));
+      const clampedStretch = Math.max(0, Math.min(1, stretchRatio));
+
+      // Dynamic physical pitch bend: 65Hz base up to 135Hz responding to crossing tension + thread stretch
+      const targetFreq = 65 + clampedTension * 35 + clampedStretch * 25;
+      const targetGain = 0.012 + clampedTension * 0.02 + clampedStretch * 0.008;
 
       this.droneOsc.frequency.setTargetAtTime(targetFreq, now, 0.04);
       this.droneGain.gain.setTargetAtTime(targetGain, now, 0.04);

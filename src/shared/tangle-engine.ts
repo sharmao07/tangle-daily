@@ -7,6 +7,36 @@ export function calculateDayNumber(date: Date = new Date()): number {
   return Math.max(1, diffDays + 1);
 }
 
+/**
+ * Returns day-of-week index (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+ * Epoch 2026-11-01 was Sunday (dayNumber 1 = Sunday).
+ */
+export function getDayOfWeek(dayNumber: number): number {
+  return ((dayNumber - 1) % 7 + 7) % 7;
+}
+
+export type WeeklyDifficultyTier = 'Gentle Monday' | 'Taper Tuesday' | 'Midweek Focus' | 'Technical Thursday' | 'Friday Crucible' | 'Weekend Masterwork';
+
+export function getDifficultyTier(dayNumber: number): WeeklyDifficultyTier {
+  const dow = getDayOfWeek(dayNumber);
+  switch (dow) {
+    case 1:
+      return 'Gentle Monday';
+    case 2:
+      return 'Taper Tuesday';
+    case 3:
+      return 'Midweek Focus';
+    case 4:
+      return 'Technical Thursday';
+    case 5:
+      return 'Friday Crucible';
+    case 6:
+    case 0:
+    default:
+      return 'Weekend Masterwork';
+  }
+}
+
 // Line intersection math using 2D cross products
 function ccw(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
   return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
@@ -124,6 +154,7 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
   };
 
   const archetypeIndex = (dayNumber - 1) % 3;
+  const dow = getDayOfWeek(dayNumber);
   let title: string;
   let archetype: string;
   const planarNodes: GraphNode[] = [];
@@ -132,14 +163,24 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
   if (archetypeIndex === 0) {
     // Wheel Graph: Outer ring + center hub
     archetype = 'Radial Wheel';
-    const ringCount = 5 + (dayNumber % 4); // 5 to 8 ring nodes (total 6 to 9)
+    // Calibrated difficulty: Mon/Tue: 5 ring nodes; Wed/Thu: 6-7 ring nodes; Fri/Weekend: 7-8 ring nodes
+    let ringCount = 5;
+    if (dow === 3 || dow === 4) {
+      ringCount = 6 + (dayNumber % 2); // 6 or 7
+    } else if (dow === 5) {
+      ringCount = 7;
+    } else if (dow === 6 || dow === 0) {
+      ringCount = 8;
+    }
+
     const titles = [
       'The Hexagonal Hub',
       'The Septagon Wheel',
       'The Octagon Spire',
-      'The Radial Nexus',
+      'The Enneagon Nexus',
     ];
-    title = titles[(dayNumber - 1) % titles.length] ?? `Radial Knot #${dayNumber}`;
+    const titleIdx = Math.max(0, Math.min(titles.length - 1, ringCount - 5));
+    title = titles[titleIdx] ?? `Radial Knot #${dayNumber}`;
 
     const centerNode: GraphNode = { id: `n${ringCount + 1}`, x: 0.5, y: 0.5 };
     for (let i = 0; i < ringCount; i++) {
@@ -165,14 +206,22 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
   } else if (archetypeIndex === 1) {
     // Concentric Prism Ladder: Outer ring + concentric inner ring + non-crossing rungs
     archetype = 'Prismatic Cage';
-    const k = 4; // 4 outer, 4 inner = 8 nodes
+    // Calibrated difficulty: Mon/Tue: k=3 (6 nodes); Wed/Thu: k=4 (8 nodes); Fri/Weekend: k=4 or 5 (8-10 nodes)
+    let k = 4;
+    if (dow === 1 || dow === 2) {
+      k = 3;
+    } else if (dow === 6 || dow === 0) {
+      k = 5;
+    }
+
     const titles = [
-      'The Prismatic Cage',
-      'Concentric Rings',
-      'The Obsidian Gate',
+      'The Triangular Vault',
       'The Dual Orbit',
+      'The Obsidian Gate',
+      'The Pentagonal Cage',
     ];
-    title = titles[(dayNumber - 1) % titles.length] ?? `Prism Knot #${dayNumber}`;
+    const titleIdx = k === 3 ? 0 : k === 4 ? 1 + (dayNumber % 2) : 3;
+    title = titles[titleIdx] ?? `Prism Knot #${dayNumber}`;
 
     const rOuter = 0.38;
     const rInner = 0.18;
@@ -207,14 +256,24 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
   } else {
     // Triangulated Convex Polygon: Outer cycle + non-crossing fan chords
     archetype = 'Faceted Gem';
-    const n = 7;
+    // Calibrated difficulty: Mon/Tue: n=6 (6 nodes); Wed/Thu: n=7 (7 nodes); Fri/Weekend: n=8 or 9 (8-9 nodes)
+    let n = 7;
+    if (dow === 1 || dow === 2) {
+      n = 6;
+    } else if (dow === 5) {
+      n = 8;
+    } else if (dow === 6 || dow === 0) {
+      n = 9;
+    }
+
     const titles = [
-      'The Faceted Diamond',
+      'Crown of Six',
       'The Celestial Kite',
-      'Crown of Seven',
+      'The Faceted Diamond',
       'The Crystalline Fold',
     ];
-    title = titles[(dayNumber - 1) % titles.length] ?? `Facet Knot #${dayNumber}`;
+    const titleIdx = n === 6 ? 0 : n === 7 ? 1 : n === 8 ? 2 : 3;
+    title = titles[titleIdx] ?? `Facet Knot #${dayNumber}`;
 
     const r = 0.36;
     for (let i = 0; i < n; i++) {
@@ -232,7 +291,7 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
       edges.push({ id: `e_cycle_${i}`, source: `n${i + 1}`, target: `n${next + 1}` });
     }
 
-    // Internal non-crossing chords from vertex 0 to vertices 2, 3, 4, 5
+    // Internal non-crossing chords from vertex 0 to vertices 2, 3, 4, ... n-2
     for (let i = 2; i <= n - 2; i++) {
       edges.push({ id: `e_chord_${i}`, source: 'n1', target: `n${i + 1}` });
     }

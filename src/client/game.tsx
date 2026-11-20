@@ -28,6 +28,38 @@ interface Spark {
 
 export type TangleTheme = 'dark' | 'light' | 'blueprint';
 
+function renderAccoladeIcon(id: string) {
+  switch (id) {
+    case 'pure_geo':
+      return (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="5" r="2" />
+          <path d="m12 7 8 13M12 7 4 20M7 16h10" />
+        </svg>
+      );
+    case 'swift_hand':
+      return (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      );
+    case 'harmonic':
+      return (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12h2M6 8v8M10 4v16M14 7v10M18 10v4M22 12h-2" />
+        </svg>
+      );
+    case 'iron_thread':
+      return (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export function TangleApp() {
   const todayDayNumber = useMemo(() => calculateDayNumber(), []);
   const [currentDay, setCurrentDay] = useState<number>(todayDayNumber);
@@ -208,9 +240,9 @@ export function TangleApp() {
     return map;
   }, [nodes]);
 
-  // Tension hotspot calculation: which node is connected to the most crossing edges?
-  const hotNodeId = useMemo(() => {
-    if (!showTensionHint || evaluation.crossingsCount === 0) return null;
+  // Highest tension node calculation (node connected to the most crossing edges)
+  const highestTensionNodeId = useMemo(() => {
+    if (evaluation.crossingsCount === 0) return null;
 
     const crossingEdgeSet = evaluation.edgeCrossingMap;
     const nodeScores = new Map<string, number>();
@@ -231,7 +263,11 @@ export function TangleApp() {
       }
     }
     return bestId;
-  }, [showTensionHint, evaluation.crossingsCount, evaluation.edgeCrossingMap, level.edges]);
+  }, [evaluation.crossingsCount, evaluation.edgeCrossingMap, level.edges]);
+
+  const hotNodeId = useMemo(() => {
+    return showTensionHint ? highestTensionNodeId : null;
+  }, [showTensionHint, highestTensionNodeId]);
 
   // Submit score on untangle
   const submitSolution = useCallback(
@@ -374,7 +410,12 @@ export function TangleApp() {
         1,
         evaluation.crossingsCount / Math.max(1, level.initialCrossings)
       );
-      tangleSounds.updateTensionDrone(tensionRatio);
+
+      const startPos = dragStartPosRef.current;
+      const stretchDist = startPos ? Math.hypot(clampedX - startPos.x, clampedY - startPos.y) : 0;
+      const stretchRatio = Math.min(1, stretchDist * 2.8);
+
+      tangleSounds.updateTensionDrone(tensionRatio, stretchRatio);
 
       setNodes((prev) =>
         prev.map((n) => (n.id === draggingNodeId ? { ...n, x: clampedX, y: clampedY } : n))
@@ -549,18 +590,18 @@ export function TangleApp() {
   // Player Mastery Accolades
   const accolades = useMemo(() => {
     if (!hasWon) return [];
-    const list: { id: string; name: string; desc: string; icon: string }[] = [];
+    const list: { id: string; name: string; desc: string }[] = [];
     if (moveCount <= level.parMoves) {
-      list.push({ id: 'pure_geo', name: 'Pure Geometry', desc: 'Solved at or below Par', icon: '📐' });
+      list.push({ id: 'pure_geo', name: 'Pure Geometry', desc: 'Solved at or below Par' });
     }
     if (elapsedSeconds < 45 && !usedHint) {
-      list.push({ id: 'swift_hand', name: 'Swift Hand', desc: 'Solved in under 45s without hints', icon: '⚡' });
+      list.push({ id: 'swift_hand', name: 'Swift Hand', desc: 'Solved in under 45s without hints' });
     }
     if (!usedHint) {
-      list.push({ id: 'harmonic', name: 'Harmonic Untangle', desc: 'Solved with zero hints', icon: '✨' });
+      list.push({ id: 'harmonic', name: 'Harmonic Untangle', desc: 'Solved with zero hints' });
     }
     if (currentStreak >= 7) {
-      list.push({ id: 'iron_thread', name: 'Iron Thread', desc: '7+ day streak maintained', icon: '🛡️' });
+      list.push({ id: 'iron_thread', name: 'Iron Thread', desc: '7+ day streak maintained' });
     }
     return list;
   }, [hasWon, moveCount, level.parMoves, elapsedSeconds, usedHint, currentStreak]);
@@ -576,7 +617,7 @@ export function TangleApp() {
     const timeFormatted = `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60)
       .toString()
       .padStart(2, '0')}s`;
-    const accoladeText = accolades.map((a) => `[${a.icon} ${a.name}]`).join(' ');
+    const accoladeText = accolades.map((a) => `[${a.name}]`).join(' ');
 
     const shareText = [
       `Tangle Daily Knot #${paddedDay}: ${level.title} ${starText}`,
@@ -923,6 +964,11 @@ export function TangleApp() {
             const isDragging = draggingNodeId === node.id;
             const isSelected = selectedNodeId === node.id;
             const isHot = hotNodeId === node.id;
+            const isOnboardingTarget =
+              moveCount === 0 &&
+              !hasWon &&
+              draggingNodeId === null &&
+              highestTensionNodeId === node.id;
 
             return (
               <g
@@ -936,6 +982,11 @@ export function TangleApp() {
               >
                 {/* 32px invisible touch target for finger tap accessibility */}
                 <circle cx={cx} cy={cy} r={32} className="pin-touch-target" />
+
+                {/* Contextual First-Move Onboarding Cue (Zero text, delicate breathing beacon) */}
+                {isOnboardingTarget && (
+                  <circle cx={cx} cy={cy} r={24} className="pin-onboarding-pulse" />
+                )}
 
                 {/* Cast Shadow */}
                 <ellipse
@@ -1038,12 +1089,33 @@ export function TangleApp() {
             <div className="accolades-shelf">
               {accolades.map((acc) => (
                 <div key={acc.id} className="accolade-chip" title={acc.desc}>
-                  <span className="accolade-icon">{acc.icon}</span>
+                  <span className="accolade-icon">{renderAccoladeIcon(acc.id)}</span>
                   <span className="accolade-name">{acc.name}</span>
                 </div>
               ))}
             </div>
           )}
+
+          {/* Subreddit Community Next Steps */}
+          <div className="community-cta-box">
+            <div className="community-cta-info">
+              <span className="community-cta-kicker">Next knot unlocks at 00:00 UTC</span>
+              <p className="community-cta-subtext">
+                Join the discussion, compare par solutions, and keep your streak alive on r/{(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'Tangle_daily'}.
+              </p>
+            </div>
+            <a
+              href={`https://reddit.com/r/${(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'Tangle_daily'}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="community-join-link"
+            >
+              <span>Join r/{(typeof context !== 'undefined' && context?.subredditName) ? context.subredditName : 'Tangle_daily'}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
 
           <div className="result-actions">
             <button className="primary-btn" onClick={handleShareSpoiler}>

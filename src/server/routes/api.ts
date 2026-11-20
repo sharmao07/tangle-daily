@@ -370,7 +370,7 @@ api.post('/complete', async (c) => {
     let userFlairAwarded: string | null = null;
     if (won && username && username !== 'wanderer') {
       try {
-        const flairText = `🧵 ${rankTitle} · ${newStreak}d streak`;
+        const flairText = `${rankTitle} • ${newStreak}d Streak`;
         await reddit.setUserFlair({
           subredditName: subreddit,
           username,

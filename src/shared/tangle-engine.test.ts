@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { linesIntersect, getTangleLevelForDay, calculateDayNumber } from './tangle-engine.ts';
+import {
+  linesIntersect,
+  getTangleLevelForDay,
+  calculateDayNumber,
+  getDayOfWeek,
+  getDifficultyTier,
+} from './tangle-engine.ts';
 import { getUserRank } from './tangle-types.ts';
 
 test('linesIntersect detects true line crossings', () => {
@@ -26,7 +32,7 @@ test('linesIntersect detects true line crossings', () => {
 test('generatePlanarKnot creates valid knots with crossings across all topological archetypes', () => {
   const archetypesSeen = new Set<string>();
 
-  for (let day = 1; day <= 15; day++) {
+  for (let day = 1; day <= 28; day++) {
     const level = getTangleLevelForDay(day);
     archetypesSeen.add(level.archetype);
 
@@ -46,6 +52,27 @@ test('generatePlanarKnot creates valid knots with crossings across all topologic
   assert.ok(archetypesSeen.has('Radial Wheel'), 'Radial Wheel should be generated');
   assert.ok(archetypesSeen.has('Prismatic Cage'), 'Prismatic Cage should be generated');
   assert.ok(archetypesSeen.has('Faceted Gem'), 'Faceted Gem should be generated');
+});
+
+test('calibrated weekly difficulty provides structured progression across days', () => {
+  // Day 2 is Monday (2026-11-02), Day 3 is Tuesday
+  assert.equal(getDayOfWeek(2), 1);
+  assert.equal(getDifficultyTier(2), 'Gentle Monday');
+  assert.equal(getDayOfWeek(3), 2);
+  assert.equal(getDifficultyTier(3), 'Taper Tuesday');
+
+  // Day 6 is Friday, Day 7 is Saturday, Day 8 is Sunday
+  assert.equal(getDayOfWeek(6), 5);
+  assert.equal(getDifficultyTier(6), 'Friday Crucible');
+  assert.equal(getDayOfWeek(7), 6);
+  assert.equal(getDifficultyTier(7), 'Weekend Masterwork');
+  assert.equal(getDayOfWeek(8), 0);
+  assert.equal(getDifficultyTier(8), 'Weekend Masterwork');
+
+  // Compare Monday knot vs Weekend knot
+  const mondayKnot = getTangleLevelForDay(2); // Monday
+  const weekendKnot = getTangleLevelForDay(7); // Saturday
+  assert.ok(mondayKnot.nodes.length <= weekendKnot.nodes.length);
 });
 
 test('calculateDayNumber returns a valid positive integer', () => {
