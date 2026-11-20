@@ -92,7 +92,24 @@ export function TangleApp() {
 
   // Audio & Modals
   const [isMuted, setIsMuted] = useState<boolean>(() => tangleSounds.isMuted());
-  const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(() => {
+    try {
+      const onboarded = localStorage.getItem('tangle_onboarded_v1');
+      return !onboarded;
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissHelpModal = useCallback(() => {
+    setShowHelpModal(false);
+    try {
+      localStorage.setItem('tangle_onboarded_v1', 'true');
+    } catch {
+      // Ignore
+    }
+  }, []);
+
   const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
@@ -856,6 +873,9 @@ export function TangleApp() {
             <span className="par-target">Target Par: {level.parMoves}</span>
           </div>
           <h1>{level.title}</h1>
+          <p className="headline-instruction">
+            {evaluation.crossingsCount === 0 ? 'Knot untangled · All lines clear' : 'Drag pins until 0 lines cross'}
+          </p>
         </div>
 
         <div className="metrics-group">
@@ -1138,28 +1158,87 @@ export function TangleApp() {
 
       {/* How to play modal */}
       {showHelpModal && (
-        <div className="modal-backdrop" onClick={() => setShowHelpModal(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" onClick={dismissHelpModal}>
+          <div className="modal-dialog instructions-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title-row">
-              <h2>How to play</h2>
-              <button className="close-btn" onClick={() => setShowHelpModal(false)}>
+              <div className="modal-heading-group">
+                <h2>How to Play Tangle</h2>
+                <span className="modal-kicker-sub">A daily knot untangling puzzle</span>
+              </div>
+              <button className="close-btn" onClick={dismissHelpModal} aria-label="Close instructions">
                 ✕
               </button>
             </div>
-            <p>
-              Tangle is a daily knot untangling puzzle grounded in planar graph theory.
-            </p>
-            <p>
-              Every knot begins with intersecting threads. Drag the drafting pins across the board until{' '}
-              <strong>zero lines cross</strong>.
-            </p>
-            <p>
-              • <strong>Dashed amber threads</strong> indicate active crossings under tension.<br />
-              • <strong>Solid silver threads</strong> are clear of intersections.<br />
-              • <strong>Tension hint</strong> highlights the pin tied to the most crossings.<br />
-              • Untangle within <strong>Par moves</strong> to earn 3 stars.<br />
-              • Advance your rank from <em>Wanderer</em> to <em>Topology Grandmaster</em> by maintaining your daily streak!
-            </p>
+
+            {/* Objective Banner */}
+            <div className="instructions-hero-card">
+              <div className="instructions-hero-badge">Objective</div>
+              <p className="instructions-hero-desc">
+                Drag the drafting pins across the board until <strong>zero lines cross</strong> each other.
+              </p>
+            </div>
+
+            {/* 3 Step Visual Guide */}
+            <div className="instructions-steps-list">
+              <div className="instruction-step-item">
+                <div className="step-badge">1</div>
+                <div className="step-detail">
+                  <span className="step-title">Drag any pin</span>
+                  <p className="step-text">
+                    Touch and slide any circular pin to reposition it anywhere on the drafting grid.
+                  </p>
+                </div>
+              </div>
+
+              <div className="instruction-step-item">
+                <div className="step-badge">2</div>
+                <div className="step-detail">
+                  <span className="step-title">Watch the line colors</span>
+                  <div className="step-legend-box">
+                    <div className="legend-item">
+                      <span className="legend-swatch swatch-tension"></span>
+                      <span className="legend-label"><strong>Amber dashed:</strong> Crossing (under tension)</span>
+                    </div>
+                    <div className="legend-item">
+                      <span className="legend-swatch swatch-clear"></span>
+                      <span className="legend-label"><strong>Emerald solid:</strong> Untangled (0 crossings)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="instruction-step-item">
+                <div className="step-badge">3</div>
+                <div className="step-detail">
+                  <span className="step-title">Reach 0 crossings to win</span>
+                  <p className="step-text">
+                    Untangle all threads to complete the daily knot. Match or beat <strong>Par moves</strong> to earn 3 stars!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pro Tip Box */}
+            <div className="instructions-pro-tip">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pro-tip-icon">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>
+                <strong>Quick Hint:</strong> The pulsing cyan ring spotlights the pin tied to the most crossings. Tap <strong>Tension hint</strong> anytime if you get stuck.
+              </span>
+            </div>
+
+            {/* Continue to Play CTA */}
+            <div className="modal-continue-action">
+              <button className="primary-btn continue-play-btn" onClick={dismissHelpModal}>
+                <span>Continue to play</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
