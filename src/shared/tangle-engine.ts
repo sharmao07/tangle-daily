@@ -351,6 +351,7 @@ export function generatePlanarKnot(dayNumber: number): TangleLevel {
     edges,
     initialCrossings: initialEval.crossingsCount,
     parMoves: Math.max(3, Math.ceil(edges.length / 3)),
+    solutionNodes: planarNodes.map((n) => ({ ...n })),
   };
 }
 

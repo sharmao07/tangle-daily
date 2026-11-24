@@ -25,6 +25,7 @@ export type TangleLevel = {
   edges: GraphEdge[];
   initialCrossings: number;
   parMoves: number;
+  solutionNodes?: GraphNode[];
 };
 
 export type DailyCommunityStats = {
