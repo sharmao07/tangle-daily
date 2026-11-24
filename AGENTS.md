@@ -1,52 +1,50 @@
-You are writing a Devvit web application that will be executed on Reddit.com.
+# Tangle: Developer & Agent Guide
+
+Guidelines for AI agents and developers working on the Tangle codebase.
 
 ## Tech Stack
 
-- **Frontend**: React 19, Tailwind CSS 4, Vite
-- **Backend**: Node.js v22 serverless environment (Devvit), Hono, TRPC
-- **Communication**: tRPC v11 for end-to-end type safety
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, `@fontsource-variable/geist`
+- **Backend:** Node.js serverless runtime on Reddit Devvit Web, Hono
+- **Storage:** Devvit Redis (Sorted Sets for leaderboards, string keys for user stats/streaks)
+- **Audio:** Web Audio API (procedural real-time physical synthesis)
 
-## Layout & Architecture
+## Project Structure
 
-- `/src/server`: **Backend Code**. This runs in a secure, serverless environment.
-  - `trpc.ts`: Defines the API router and procedures.
-  - `index.ts`: Main server entry point (Hono app).
-  - Access `redis`, `reddit`, and `context` here via `@devvit/web/server`.
-- `/src/client`: **Frontend Code**. This is executed inside of an iFrame on reddit.com
-  - To add an entrypoint, create a HTML file and add to the mapping inside of `devvit.json`
-  - Entrypoints:
-    - `game.html`: The main React entry point (Expanded View).
-    - `splash.html`: The initial React entry point (Inline View). This will be shown in the reddit.com feed. Please keep it fast and keep heavy dependencies inside of `game.html`
-- `/src/shared`: **Shared Code**. Code to share between the client and server
+- `/src/client`: Frontend application rendered inside an iframe on reddit.com
+  - `game.html`: Main React entrypoint (configured with `"height": "tall"` in `devvit.json`)
+  - `game.tsx`: Core game canvas, pointer capture, drag logic, and modal dialogs
+  - `tangle-audio.ts`: Web Audio procedural synthesizer (pin taps, plucks, tension drone)
+  - `index.css`: Unslopped design system (graphite ramp, themes, responsive layout)
+- `/src/server`: Backend code executed in Devvit's serverless environment
+  - `index.ts`: Hono HTTP server mounting `/api` and `/internal` routes
+  - `core/post.ts`: Automated daily post creation and sticky moderator comment formatting
+  - `routes/api.ts`: `/api/init` and `/api/complete` handling Redis state and Reddit user flairs
+  - `routes/scheduler.ts`: Cron handler for daily midnight posts (`0 0 * * *`)
+  - `routes/menu.ts`: Moderator menu action to manually trigger daily posts
+- `/src/shared`: Shared TypeScript code between client and server
+  - `tangle-engine.ts`: 2D cross-product line intersection math, planar graph generation, daily PRNG seeds
+  - `tangle-types.ts`: Graph data structures and API contract interfaces
 
-## Frontend
+## Core Rules & Constraints
 
-### Rules
+1. **Anti-AI Slop Design:**
+   - Adhere strictly to the graphite neutral ramp (`#0b0e14` to `#eef2f6`).
+   - Do NOT introduce emoji decorations into UI chrome, buttons, or accolades. Use clean inline SVG icons.
+   - Maintain sentence case typography.
+2. **Reddit Integration:**
+   - Use `navigateTo` from `@devvit/web/client` rather than `window.location`.
+   - Never use blocking `window.alert`; use toast notifications (`showToast`).
+   - All Reddit API operations (`reddit.getSnoovatarUrl`, `reddit.setUserFlair`) must be guarded with try/catch to prevent unauthenticated fallback crashes.
+3. **Viewport Budgeting:**
+   - All interactive layouts must fit 375px mobile viewports without horizontal clipping.
+   - Canvas interactions must use `touch-action: none` to prevent mobile swipe interference.
 
-- Instead of `window.location` or `window.assign`, use `navigateTo` from `@devvit/web/client`
+## Verification Commands
 
-### Limitations
-
-- `window.alert`: Use `showToast` or `showForm` from `@devvit/web/client`
-- File downloads: Use clipboard API with `showToast` to confirm
-- Geolocation, camera, microphone, and notifications web APIs: No alternatives
-- Inline script tags inside of `html` files: Use a script tag and separate js/ts file
-
-## Commands
-
-- `npm run type-check`: Check typescript types
-- `npm run lint`: Check the linter
-- `npm run test -- my-file-name`: Run tests isolated to a file
-
-## Code Style
-
-- Prefer type aliases over interfaces when writing typescript
-- Prefer named exports over default exports
-- Never cast typescript types
-
-## Global Rules
-
-- You may find code that references blocks or `@devvit/public-api` while building a feature. Do NOT use this code as this project is configured to use Devvit web only.
-- Whenever you add an endpoint for a new menu item action, ensure that you've added the corresponding mapping to `devvit.json` so that it is properly registered
-
-Docs: https://developers.reddit.com/docs/llms.txt.
+```bash
+npm run test:types   # Type check
+npm run lint         # ESLint validation
+npm run test:unit    # Unit tests
+npm run build        # Vite production build
+```
