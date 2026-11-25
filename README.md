@@ -105,7 +105,8 @@ Zero audio files. Zero asset latency. All sound synthesis runs purely in client-
 │       ├── tangle-engine.ts  # Planar graph generator, 2D cross-product math, daily seeds
 │       └── tangle-types.ts   # Shared TypeScript domain contracts
 └── public/
-    ├── branding/             # Vector SVGs, subreddit banner, and community icons
+    ├── tangle-logo.svg       # Geometric vector knot logo
+    ├── tangle-banner.svg     # Clean editorial vector banner
     └── tangle-demo-video.mp4 # 37-second gameplay demo video
 ```
 
